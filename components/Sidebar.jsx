@@ -1,6 +1,6 @@
 "use client"
 import React, { useState } from 'react'
-import { Bell, Home, Users, Shield, FileText, CreditCard, LogOut, Menu, X, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Bell, Home, Users, Shield, FileText, CreditCard, LogOut, Menu, X, ChevronLeft, ChevronRight ,Key } from 'lucide-react';
 
 const Sidebar = ({ isOpen, toggleSidebar }) => {
   const [activeItem, setActiveItem] = useState('Dashboard');
@@ -9,36 +9,40 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
 
   const menuItems = [
     { icon: Home, label: 'Dashboard', hasSubmenu: false },
-    { 
+    /*{ 
       icon: Users, 
       label: 'Employee Location', 
       hasSubmenu: true,
       subItems: ['View Employees', 'Add Employee', 'Locations']
     },
+    */
+   /*
     { 
       icon: Shield, 
       label: 'Security & Access', 
       hasSubmenu: true,
       subItems: ['Create Admin User', 'Access Permission', 'Security Settings']
     },
+    */
     { 
       icon: FileText, 
       label: 'Master', 
       hasSubmenu: true,
-      subItems: ['Employee Master', 'Distributor Master', 'Distributor Market' , ' Relationship' , 'Product Master', 'Customer Master', 'Vendor Master' , ' Gift Master' , ' Hsn Sac Master' ,' Sales Target Management']
+      subItems: ['Employee']
     },
     { 
       icon: FileText, 
-      label: 'Reports', 
-      hasSubmenu: true,
-      subItems: ['Distributor Daily Stock', 'Primary Order', 'Secondary Order', ' Distributor Return' , ' Todays Order & Return' , 'Distributor Ledger' , 'Invoice Report' , 'Pending Order Product' , ' Pendeing Order Gift' , 'Marketing Yearly Report', 'Distributor Yearly Report']
+      label: 'Attendence Report', 
+      hasSubmenu: false,
+      // subItems: ['Distributor Daily Stock', 'Primary Order', 'Secondary Order', ' Distributor Return' , ' Todays Order & Return' , 'Distributor Ledger' , 'Invoice Report' , 'Pending Order Product' , ' Pendeing Order Gift' , 'Marketing Yearly Report', 'Distributor Yearly Report']
     },
     { 
-      icon: CreditCard, 
-      label: 'Payment', 
-      hasSubmenu: true,
-      subItems: ['Payment History', 'Pending Payments', 'Payment Methods']
+      icon: FileText, 
+      label: 'Leave Report', 
+      hasSubmenu: false,
+      // subItems: ['Payment History', 'Pending Payments', 'Payment Methods']
     },
+    { icon: Key, label: 'Change Password', hasSubmenu: false },
     { icon: LogOut, label: 'Logout', hasSubmenu: false }
   ];
 
@@ -64,7 +68,7 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
         />
       )}
       {/* Sidebar */}
-      <div className={`fixed left-0 top-0 h-screen ${collapsed ? 'w-16' : 'w-64'} bg-blue-500 transform transition-all duration-300 ease-in-out z-50 overflow-y-auto ${
+      <div className={`fixed left-0 top-0 h-screen ${collapsed ? 'w-16' : 'w-64'} bg-blue-500 transform transition-all duration-300 ease-in-out z-50 overflow-y-auto custom-hide-scrollbar ${
         isOpen ? 'translate-x-0' : '-translate-x-full'
       } lg:translate-x-0 lg:static lg:z-auto`}>
         {/* Collapse Button */}
@@ -112,7 +116,7 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
                 onClick={() => handleItemClick(item)}
                 className={`w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-left transition-colors ${
                   activeItem === item.label 
-                    ? 'bg-blue-700 text-white' 
+                    ? 'bg-blue-600 text-white' 
                     : 'text-blue-100 hover:bg-blue-400'
                 } ${collapsed ? 'justify-center px-0' : ''}`}
               >
@@ -128,14 +132,14 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
               </button>
               {/* Submenu */}
               {item.hasSubmenu && expandedItem === item.label && !collapsed && (
-                <div className="ml-4 mt-1 space-y-1">
+                <div className="ml-4 mt-1 space-y-1 text-white">
                   {item.subItems.map((subItem) => (
                     <button
                       key={subItem}
                       onClick={() => setActiveItem(subItem)}
-                      className={`w-full text-left px-3 py-2 text-sm rounded-lg transition-colors ${
+                      className={`w-full text-left px-3 py-2 text-sm rounded-lg transition-colors text-white ${
                         activeItem === subItem
-                          ? 'bg-blue-800 text-white'
+                          ? 'bg-blue-600 text-white'
                           : 'text-blue-200 hover:bg-blue-500 hover:text-white'
                       }`}
                     >
