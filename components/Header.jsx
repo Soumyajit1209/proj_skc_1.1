@@ -10,9 +10,7 @@ const Header = ({ toggleSidebar }) => (
       >
         <Menu size={20} />
       </button>
-      <div className="flex items-center space-x-2">
-        <span className="font-semibold text-gray-800">DASHBOARD</span>
-      </div>
+      
     </div>
     <div className="flex items-center space-x-4">
       <Bell size={20} className="text-gray-600" />

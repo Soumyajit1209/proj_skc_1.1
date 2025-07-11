@@ -1,12 +1,9 @@
 "use client"
 import React, { useState } from 'react';
-import Header from '@/components/Header';
-import Sidebar from '@/components/Sidebar';
+import LayoutWrapper from '@/components/LayoutWrapper';
 import NotificationsTable from '@/components/NotificationsTable';
 
-
 const Dashboard = () => {
-  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [notifications, setNotifications] = useState([
     {
       id: 1,
@@ -25,10 +22,6 @@ const Dashboard = () => {
     }
   ]);
 
-  const toggleSidebar = () => {
-    setSidebarOpen(!sidebarOpen);
-  };
-
   const handleMarkAsRead = (id) => {
     setNotifications(notifications.map(notification => 
       notification.id === id 
@@ -38,22 +31,15 @@ const Dashboard = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-100 flex flex-col md:flex-row">
-      <Sidebar isOpen={sidebarOpen} toggleSidebar={toggleSidebar} />
-      
-      <div className="flex-1 flex flex-col min-h-screen">
-        <Header toggleSidebar={toggleSidebar} />
-        
-        <main className="flex-1 p-2 sm:p-3.5">
-          <div className="w-full max-w-7xl mx-auto">
-            <NotificationsTable 
-              notifications={notifications}
-              onMarkAsRead={handleMarkAsRead}
-            />
-          </div>
-        </main>
-      </div>
-    </div>
+    <LayoutWrapper 
+      title="Dashboard" 
+      subtitle="Welcome to your admin dashboard"
+    >
+      <NotificationsTable 
+        notifications={notifications}
+        onMarkAsRead={handleMarkAsRead}
+      />
+    </LayoutWrapper>
   );
 };
 

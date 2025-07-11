@@ -2,49 +2,53 @@
 import React, { useState } from 'react'
 import { Bell, Home, Users, Shield, FileText, CreditCard, LogOut, Menu, X, ChevronLeft, ChevronRight ,Key } from 'lucide-react';
 import Image from 'next/image';
+import { usePathname, useRouter } from 'next/navigation';
 
 const Sidebar = ({ isOpen, toggleSidebar }) => {
-  const [activeItem, setActiveItem] = useState('Dashboard');
   const [expandedItem, setExpandedItem] = useState(null);
   const [collapsed, setCollapsed] = useState(false);
+  const pathname = usePathname();
+  const router = useRouter();
 
   const menuItems = [
-    { icon: Home, label: 'Dashboard', hasSubmenu: false },
-    /*{ 
-      icon: Users, 
-      label: 'Employee Location', 
-      hasSubmenu: true,
-      subItems: ['View Employees', 'Add Employee', 'Locations']
-    },
-    */
-   /*
     { 
-      icon: Shield, 
-      label: 'Security & Access', 
-      hasSubmenu: true,
-      subItems: ['Create Admin User', 'Access Permission', 'Security Settings']
+      icon: Home, 
+      label: 'Dashboard', 
+      hasSubmenu: false,
+      path: '/'
     },
-    */
     { 
       icon: FileText, 
       label: 'Master', 
       hasSubmenu: true,
-      subItems: ['Employee']
+      subItems: [
+        { label: 'Employee', path: '/employee' }
+      ]
     },
     { 
       icon: FileText, 
-      label: 'Attendence Report', 
+      label: 'Attendance Report', 
       hasSubmenu: false,
-      // subItems: ['Distributor Daily Stock', 'Primary Order', 'Secondary Order', ' Distributor Return' , ' Todays Order & Return' , 'Distributor Ledger' , 'Invoice Report' , 'Pending Order Product' , ' Pendeing Order Gift' , 'Marketing Yearly Report', 'Distributor Yearly Report']
+      path: '/attendance'
     },
     { 
       icon: FileText, 
       label: 'Leave Report', 
       hasSubmenu: false,
-      // subItems: ['Payment History', 'Pending Payments', 'Payment Methods']
+      path: '/leave'
     },
-    { icon: Key, label: 'Change Password', hasSubmenu: false },
-    { icon: LogOut, label: 'Logout', hasSubmenu: false }
+    { 
+      icon: Key, 
+      label: 'Change Password', 
+      hasSubmenu: false,
+      path: '/change-password'
+    },
+    { 
+      icon: LogOut, 
+      label: 'Logout', 
+      hasSubmenu: false,
+      action: 'logout'
+    }
   ];
 
   const toggleSubmenu = (itemLabel) => {
@@ -52,10 +56,45 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
   };
 
   const handleItemClick = (item) => {
-    setActiveItem(item.label);
     if (item.hasSubmenu) {
       toggleSubmenu(item.label);
+    } else if (item.action === 'logout') {
+      // Handle logout action
+      if (confirm('Are you sure you want to logout?')) {
+        // Implement logout logic here
+        console.log('Logging out...');
+      }
+    } else if (item.path) {
+      router.push(item.path);
+      // Close sidebar on mobile after navigation
+      if (window.innerWidth < 1024) {
+        toggleSidebar();
+      }
     }
+  };
+
+  const handleSubItemClick = (subItem) => {
+    if (subItem.path) {
+      router.push(subItem.path);
+      // Close sidebar on mobile after navigation
+      if (window.innerWidth < 1024) {
+        toggleSidebar();
+      }
+    }
+  };
+
+  const isActive = (path) => {
+    return pathname === path;
+  };
+
+  const isParentActive = (item) => {
+    if (item.path) {
+      return pathname === item.path;
+    }
+    if (item.subItems) {
+      return item.subItems.some(subItem => pathname === subItem.path);
+    }
+    return false;
   };
 
   const handleCollapse = () => setCollapsed((prev) => !prev);
@@ -127,7 +166,7 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
               <button
                 onClick={() => handleItemClick(item)}
                 className={`w-full flex items-center space-x-2 sm:space-x-3 px-2 sm:px-3 py-2 rounded-lg text-left transition-colors ${
-                  activeItem === item.label 
+                  isParentActive(item)
                     ? 'bg-blue-600 text-white' 
                     : 'text-blue-100 hover:bg-blue-400'
                 } ${collapsed ? 'justify-center px-0' : ''}`}
@@ -147,15 +186,15 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
                 <div className="ml-3 sm:ml-4 mt-1 space-y-1 text-white">
                   {item.subItems.map((subItem) => (
                     <button
-                      key={subItem}
-                      onClick={() => setActiveItem(subItem)}
+                      key={subItem.label}
+                      onClick={() => handleSubItemClick(subItem)}
                       className={`w-full text-left px-2 sm:px-3 py-2 text-xs sm:text-sm rounded-lg transition-colors text-white truncate ${
-                        activeItem === subItem
+                        isActive(subItem.path)
                           ? 'bg-blue-600 text-white'
                           : 'text-blue-200 hover:bg-blue-500 hover:text-white'
                       }`}
                     >
-                      {subItem}
+                      {subItem.label}
                     </button>
                   ))}
                 </div>
