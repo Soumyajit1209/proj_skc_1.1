@@ -4,7 +4,7 @@ import { NextResponse } from 'next/server';
 export function middleware(request) {
   const token = request.cookies.get('token')?.value;
   const { pathname } = request.nextUrl;
-  console.log('Middleware: Checking token', token, 'for path', pathname); // Debug log
+  console.log('Middleware: Checking token', token, 'for path', pathname); 
 
   if (pathname === '/login') {
     if (token) {
