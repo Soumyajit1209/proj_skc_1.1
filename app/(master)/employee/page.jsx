@@ -1,151 +1,257 @@
 "use client"
-import React, { useState } from 'react';
-import Header from '@/components/Header';
-import Sidebar from '@/components/Sidebar';
-import { Plus, Edit, Trash2 } from 'lucide-react';
 
-const Employee = () => {
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [employees, setEmployees] = useState([
-    {
-      id: 1,
-      name: 'John Doe',
-      position: 'Manager',
-      department: 'Sales',
-      email: 'john.doe@company.com',
-      phone: '+1 234 567 8900',
-      status: 'Active'
-    },
-    {
-      id: 2,
-      name: 'Jane Smith',
-      position: 'Developer',
-      department: 'IT',
-      email: 'jane.smith@company.com',
-      phone: '+1 234 567 8901',
-      status: 'Active'
-    },
-    {
-      id: 3,
-      name: 'Mike Johnson',
-      position: 'Analyst',
-      department: 'Finance',
-      email: 'mike.johnson@company.com',
-      phone: '+1 234 567 8902',
-      status: 'Inactive'
+import { useState, useEffect } from "react"
+import Header from "@/components/Header"
+import Sidebar from "@/components/Sidebar"
+import EmployeeTable from "@/components/EmployeeTable"
+import EmployeeModal from "@/components/EmployeeModal"
+import AddEmployeeModal from "@/components/AddEmployeeModal"
+import ErrorAlert from "@/components/ui/ErrorAlert"
+import { Plus, X } from "lucide-react"
+import { useAuth } from "../../../contexts/AuthContext"
+import { useRouter } from "next/navigation"
+
+const EmployeeManagement = () => {
+  const { user, logout, isAuthenticated } = useAuth()
+  const router = useRouter()
+  const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [employees, setEmployees] = useState([])
+  const [isModalOpen, setIsModalOpen] = useState(false)
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false)
+  const [selectedEmployee, setSelectedEmployee] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
+
+  // Check if user is admin
+  useEffect(() => {
+    if (isAuthenticated && user?.role !== "admin") {
+      setError("Access denied. Admin role required.")
+      router.push("/login")
     }
-  ]);
+  }, [isAuthenticated, user, router])
+
+  // Fetch employees with JWT token from AuthContext
+  const fetchEmployees = async () => {
+    if (!isAuthenticated || user?.role !== "admin") {
+      setError("Access denied. Admin role required.")
+      logout()
+      return
+    }
+
+    try {
+      setLoading(true)
+      const response = await fetch("http://localhost:3001/api/admin/all-employees", {
+        headers: {
+          Authorization: `Bearer ${user.token}`,
+          "Content-Type": "application/json",
+        },
+      })
+
+      if (response.status === 401) {
+        setError("Session expired. Please login again.")
+        logout()
+        return
+      }
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || "Failed to fetch employees")
+      }
+
+      const data = await response.json()
+      setEmployees(data)
+      setLoading(false)
+    } catch (err) {
+      setError(err.message || "Failed to fetch employees")
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    if (isAuthenticated && user?.role === "admin") {
+      fetchEmployees()
+    }
+  }, [isAuthenticated, user])
+
+  const handleViewEmployee = (employee) => {
+    setSelectedEmployee(employee)
+    setIsModalOpen(true)
+  }
+
+  const handleUpdateEmployee = async (updatedEmployee) => {
+    if (!isAuthenticated || user?.role !== "admin") {
+      setError("Access denied. Admin role required.")
+      logout()
+      return
+    }
+
+    try {
+      const response = await fetch(`http://localhost:3001/api/admin/employee/${updatedEmployee.emp_id}`, {
+        method: "PUT",
+        headers: {
+          Authorization: `Bearer ${user.token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(updatedEmployee),
+      })
+
+      if (response.status === 401) {
+        setError("Session expired. Please login again.")
+        logout()
+        return
+      }
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || "Failed to update employee")
+      }
+
+      setIsModalOpen(false)
+      fetchEmployees()
+    } catch (err) {
+      setError(err.message || "Failed to update employee")
+    }
+  }
+
+  const handleDeleteEmployee = async (emp_id) => {
+    if (!isAuthenticated || user?.role !== "admin") {
+      setError("Access denied. Admin role required.")
+      logout()
+      return
+    }
+
+    if (window.confirm("Are you sure you want to delete this employee?")) {
+      try {
+        const response = await fetch(`http://localhost:3001/api/admin/employee/${emp_id}`, {
+          method: "DELETE",
+          headers: {
+            Authorization: `Bearer ${user.token}`,
+            "Content-Type": "application/json",
+          },
+        })
+
+        if (response.status === 401) {
+          setError("Session expired. Please login again.")
+          logout()
+          return
+        }
+
+        if (!response.ok) {
+          const errorData = await response.json()
+          throw new Error(errorData.error || "Failed to delete employee")
+        }
+
+        fetchEmployees()
+      } catch (err) {
+        setError(err.message || "Failed to delete employee")
+      }
+    }
+  }
+
+  const handleAddEmployee = async (newEmployee) => {
+    if (!isAuthenticated || user?.role !== "admin") {
+      setError("Access denied. Admin role required.")
+      logout()
+      return
+    }
+
+    try {
+      const response = await fetch("http://localhost:3001/api/admin/employee", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${user.token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(newEmployee),
+      })
+
+      if (response.status === 401) {
+        setError("Session expired. Please login again.")
+        logout()
+        return
+      }
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || "Failed to add employee")
+      }
+
+      setIsAddModalOpen(false)
+      fetchEmployees()
+    } catch (err) {
+      setError(err.message || "Failed to add employee")
+    }
+  }
 
   const toggleSidebar = () => {
-    setSidebarOpen(!sidebarOpen);
-  };
+    setSidebarOpen(!sidebarOpen)
+  }
 
-  const handleDeleteEmployee = (id) => {
-    setEmployees(employees.filter(emp => emp.id !== id));
-  };
+  // Render access denied message if not admin
+  if (!isAuthenticated || user?.role !== "admin") {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
+        <div className="bg-white rounded-lg shadow-lg p-6 max-w-md w-full text-center">
+          <div className="w-12 h-12 mx-auto bg-red-100 rounded-full flex items-center justify-center mb-4">
+            <X className="w-6 h-6 text-red-600" />
+          </div>
+          <h2 className="text-xl font-semibold text-gray-800 mb-2">Access Denied</h2>
+          <p className="text-gray-600">Admin role required to access this page.</p>
+        </div>
+      </div>
+    )
+  }
 
   return (
-    <div className="min-h-screen bg-gray-100 flex flex-col md:flex-row">
+    <div className="min-h-screen bg-slate-50 flex flex-col lg:flex-row">
       <Sidebar isOpen={sidebarOpen} toggleSidebar={toggleSidebar} />
-      
-      <div className="flex-1 flex flex-col min-h-screen">
+
+      <div className="flex-1 flex flex-col min-w-0">
         <Header toggleSidebar={toggleSidebar} />
-        
-        <main className="flex-1 p-2 sm:p-3.5">
-          <div className="w-full max-w-7xl mx-auto">
-            <div className="mb-6 flex justify-between items-center">
+
+        <main className="flex-1 p-3 sm:p-4 lg:p-6">
+          <div className="max-w-7xl mx-auto">
+            {/* Header Section */}
+            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-4 sm:mb-6">
               <div>
-                <h1 className="text-2xl font-bold text-gray-800">Employee Management</h1>
-                <p className="text-gray-600 mt-2">Manage your employee information</p>
+                <h1 className="text-xl sm:text-2xl font-semibold text-gray-900">Employee Management</h1>
+                <p className="text-sm sm:text-base text-gray-600 mt-1">Manage your team members</p>
               </div>
-              <button className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center space-x-2 transition-colors">
+              <button
+                onClick={() => setIsAddModalOpen(true)}
+                className="bg-sky-600 hover:bg-sky-700 text-white px-3 sm:px-4 py-2 rounded-lg flex items-center justify-center gap-2 transition-colors text-sm sm:text-base w-full sm:w-auto"
+              >
                 <Plus size={16} />
-                <span>Add Employee</span>
+                <span className="sm:inline">Add Employee</span>
               </button>
             </div>
-            
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 w-full">
-              <div className="px-4 sm:px-6 py-4 border-b">
-                <h2 className="text-base sm:text-lg font-semibold text-gray-800">Employee List</h2>
-              </div>
-              <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200 text-xs sm:text-sm">
-                  <thead className="bg-blue-400">
-                    <tr>
-                      <th className="px-3 sm:px-6 py-3 text-left text-xs font-bold text-white uppercase tracking-wider">
-                        Name
-                      </th>
-                      <th className="px-3 sm:px-6 py-3 text-left text-xs font-bold text-white uppercase tracking-wider">
-                        Position
-                      </th>
-                      <th className="px-3 sm:px-6 py-3 text-left text-xs font-bold text-white uppercase tracking-wider">
-                        Department
-                      </th>
-                      <th className="px-3 sm:px-6 py-3 text-left text-xs font-bold text-white uppercase tracking-wider">
-                        Email
-                      </th>
-                      <th className="px-3 sm:px-6 py-3 text-left text-xs font-bold text-white uppercase tracking-wider">
-                        Phone
-                      </th>
-                      <th className="px-3 sm:px-6 py-3 text-left text-xs font-bold text-white uppercase tracking-wider">
-                        Status
-                      </th>
-                      <th className="px-3 sm:px-6 py-3 text-left text-xs font-bold text-white uppercase tracking-wider">
-                        Actions
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
-                    {employees.map((employee) => (
-                      <tr key={employee.id} className="hover:bg-gray-50">
-                        <td className="px-3 sm:px-6 py-4 whitespace-nowrap">
-                          <span className="text-gray-900 font-medium">{employee.name}</span>
-                        </td>
-                        <td className="px-3 sm:px-6 py-4 whitespace-nowrap">
-                          <span className="text-gray-600">{employee.position}</span>
-                        </td>
-                        <td className="px-3 sm:px-6 py-4 whitespace-nowrap">
-                          <span className="text-gray-600">{employee.department}</span>
-                        </td>
-                        <td className="px-3 sm:px-6 py-4 whitespace-nowrap">
-                          <span className="text-gray-600">{employee.email}</span>
-                        </td>
-                        <td className="px-3 sm:px-6 py-4 whitespace-nowrap">
-                          <span className="text-gray-600">{employee.phone}</span>
-                        </td>
-                        <td className="px-3 sm:px-6 py-4 whitespace-nowrap">
-                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                            employee.status === 'Active' 
-                              ? 'bg-green-100 text-green-800' 
-                              : 'bg-red-100 text-red-800'
-                          }`}>
-                            {employee.status}
-                          </span>
-                        </td>
-                        <td className="px-3 sm:px-6 py-4 whitespace-nowrap">
-                          <div className="flex space-x-2">
-                            <button className="text-blue-600 hover:text-blue-800 p-1 rounded">
-                              <Edit size={16} />
-                            </button>
-                            <button 
-                              onClick={() => handleDeleteEmployee(employee.id)}
-                              className="text-red-600 hover:text-red-800 p-1 rounded"
-                            >
-                              <Trash2 size={16} />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
+
+            {/* Error Alert */}
+            {error && <ErrorAlert message={error} onClose={() => setError(null)} />}
+
+            {/* Employee Table */}
+            <EmployeeTable
+              employees={employees}
+              loading={loading}
+              onViewEmployee={handleViewEmployee}
+              onDeleteEmployee={handleDeleteEmployee}
+            />
+
+            {/* Modals */}
+            {isModalOpen && selectedEmployee && (
+              <EmployeeModal
+                employee={selectedEmployee}
+                onClose={() => setIsModalOpen(false)}
+                onUpdate={handleUpdateEmployee}
+              />
+            )}
+
+            {isAddModalOpen && <AddEmployeeModal onClose={() => setIsAddModalOpen(false)} onAdd={handleAddEmployee} />}
           </div>
         </main>
       </div>
     </div>
-  );
-};
+  )
+}
 
-export default Employee;
+export default EmployeeManagement
