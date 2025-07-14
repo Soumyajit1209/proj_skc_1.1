@@ -25,6 +25,23 @@ const EmployeeTable = ({ employees, loading, onViewEmployee, onDeleteEmployee })
     setSearchTerm('');
   };
 
+  // Status Badge Component
+  const StatusBadge = ({ is_active }) => {
+    const isActive = is_active === 1;
+    return (
+      <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+        isActive 
+          ? 'bg-green-100 text-green-800' 
+          : 'bg-red-100 text-red-800'
+      }`}>
+        <div className={`w-1.5 h-1.5 rounded-full mr-1 ${
+          isActive ? 'bg-green-500' : 'bg-red-500'
+        }`} />
+        {isActive ? 'Active' : 'Inactive'}
+      </span>
+    );
+  };
+
   // Mobile Card Component
   const EmployeeCard = ({ employee }) => (
     <div className="bg-white border border-gray-200 rounded-lg p-3 mb-2">
@@ -47,6 +64,9 @@ const EmployeeTable = ({ employees, loading, onViewEmployee, onDeleteEmployee })
             <h3 className="text-sm font-medium text-gray-900 truncate">{employee.full_name}</h3>
             <p className="text-xs text-gray-500">ID: {employee.emp_id}</p>
             <p className="text-xs text-gray-500 truncate">@{employee.username}</p>
+            <div className="mt-1">
+              <StatusBadge is_active={employee.is_active} />
+            </div>
           </div>
         </div>
 
@@ -164,6 +184,9 @@ const EmployeeTable = ({ employees, loading, onViewEmployee, onDeleteEmployee })
               <th className="hidden md:table-cell px-3 lg:px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Username
               </th>
+              <th className="px-3 lg:px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Status
+              </th>
               <th className="px-3 lg:px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Actions
               </th>
@@ -172,7 +195,7 @@ const EmployeeTable = ({ employees, loading, onViewEmployee, onDeleteEmployee })
           <tbody className="bg-white divide-y divide-gray-100">
             {loading ? (
               <tr>
-                <td colSpan={4} className="px-3 lg:px-4 py-6 text-center">
+                <td colSpan={5} className="px-3 lg:px-4 py-6 text-center">
                   <div className="flex items-center justify-center">
                     <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-sky-600"></div>
                     <span className="ml-2 text-gray-600">Loading employees...</span>
@@ -181,7 +204,7 @@ const EmployeeTable = ({ employees, loading, onViewEmployee, onDeleteEmployee })
               </tr>
             ) : filteredEmployees.length === 0 ? (
               <tr>
-                <td colSpan={4} className="px-3 lg:px-4 py-6 text-center">
+                <td colSpan={5} className="px-3 lg:px-4 py-6 text-center">
                   <User className="w-6 h-6 mx-auto mb-2 text-gray-400" />
                   <p className="text-gray-500">
                     {searchTerm ? 'No employees found matching your search' : 'No employees found'}
@@ -224,6 +247,9 @@ const EmployeeTable = ({ employees, loading, onViewEmployee, onDeleteEmployee })
                   </td>
                   <td className="hidden md:table-cell px-3 lg:px-4 py-2 whitespace-nowrap">
                     <span className="text-sm text-gray-900">@{employee.username}</span>
+                  </td>
+                  <td className="px-3 lg:px-4 py-2 whitespace-nowrap">
+                    <StatusBadge is_active={employee.is_active} />
                   </td>
                   <td className="px-3 lg:px-4 py-2 whitespace-nowrap text-right">
                     <div className="flex justify-end space-x-1">

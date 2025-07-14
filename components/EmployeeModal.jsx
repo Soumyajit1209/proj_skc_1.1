@@ -4,9 +4,12 @@ import { useState } from "react"
 import { X, User, Upload, Edit2, Check, X as XIcon } from "lucide-react"
 
 const EmployeeModal = ({ employee, onClose, onUpdate }) => {
-  const [formData, setFormData] = useState(employee)
-  const [previewImage, setPreviewImage] = useState(employee.profile_picture || null)
-  const [isEditing, setIsEditing] = useState(false)
+  const [formData, setFormData] = useState({
+    ...employee,
+    is_active: Number(employee.is_active), // Ensure is_active is a number
+  });
+  const [previewImage, setPreviewImage] = useState(employee.profile_picture || null);
+  const [isEditing, setIsEditing] = useState(false);
 
   // Add CSS to hide scrollbar for webkit browsers
   const hideScrollbarStyle = `
@@ -20,53 +23,59 @@ const EmployeeModal = ({ employee, onClose, onUpdate }) => {
   `
 
   const handleFileChange = (e) => {
-    const file = e.target.files?.[0]
+    const file = e.target.files?.[0];
     if (file) {
       if (!file.type.startsWith("image/")) {
-        alert("Please upload an image file")
-        return
+        alert("Please upload an image file");
+        return;
       }
       if (file.size > 5 * 1024 * 1024) {
-        alert("Image size should not exceed 5MB")
-        return
+        alert("Image size should not exceed 5MB");
+        return;
       }
 
-      const reader = new FileReader()
+      const reader = new FileReader();
       reader.onloadend = () => {
-        const result = reader.result
-        setFormData({ ...formData, profile_picture: result })
-        setPreviewImage(result)
-      }
-      reader.readAsDataURL(file)
+        const result = reader.result;
+        setFormData({ ...formData, profile_picture: result });
+        setPreviewImage(result);
+      };
+      reader.readAsDataURL(file);
     }
-  }
+  };
 
   const handleSubmit = (e) => {
-    e.preventDefault()
-    onUpdate(formData)
-    setIsEditing(false)
-  }
+    e.preventDefault();
+    console.log('Submitting formData:', formData, 'is_active type:', typeof formData.is_active);
+    onUpdate(formData);
+    setIsEditing(false);
+  };
 
   const handleChange = (e) => {
-    const { name, value } = e.target
+    const { name, value } = e.target;
+    const updatedValue = name === "is_active" ? Number.parseInt(value) : value;
+    console.log(`Changing ${name} to:`, updatedValue, typeof updatedValue);
     setFormData({
       ...formData,
-      [name]: name === "is_active" ? Number.parseInt(value) : value,
-    })
-  }
+      [name]: updatedValue,
+    });
+  };
 
   const toggleEdit = () => {
-    setIsEditing(!isEditing)
-  }
+    setIsEditing(!isEditing);
+  };
 
   const handleCancel = () => {
-    setFormData(employee)
-    setPreviewImage(employee.profile_picture || null)
-    setIsEditing(false)
-  }
+    setFormData({
+      ...employee,
+      is_active: Number(employee.is_active),
+    });
+    setPreviewImage(employee.profile_picture || null);
+    setIsEditing(false);
+  };
 
   const renderField = (fieldName, label, type = "text", required = false, options = null) => {
-    const value = formData[fieldName] || ""
+    const value = formData[fieldName] !== undefined ? formData[fieldName] : "";
 
     return (
       <div>
@@ -76,13 +85,13 @@ const EmployeeModal = ({ employee, onClose, onUpdate }) => {
           options ? (
             <select
               name={fieldName}
-              value={value}
+              value={value.toString()}
               onChange={handleChange}
               className="w-full px-3 py-2 text-sm sm:text-base border border-gray-300 rounded-md focus:ring-sky-500 focus:border-sky-500"
               required={required}
             >
               {options.map(option => (
-                <option key={option.value} value={option.value}>
+                <option key={option.value} value={option.value.toString()}>
                   {option.label}
                 </option>
               ))}
@@ -102,9 +111,9 @@ const EmployeeModal = ({ employee, onClose, onUpdate }) => {
           <div className="w-full px-3 py-2 text-sm sm:text-base border border-gray-200 rounded-md bg-gray-50 min-h-[38px] flex items-center">
             {fieldName === "is_active" ? (
               <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${
-                value === 1 ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                value === 1 || value === "1" ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
               }`}>
-                {value === 1 ? 'Active' : 'Inactive'}
+                {value === 1 || value === "1" ? 'Active' : 'Inactive'}
               </span>
             ) : type === "password" ? (
               <span className="text-gray-500">••••••••</span>
@@ -114,8 +123,8 @@ const EmployeeModal = ({ employee, onClose, onUpdate }) => {
           </div>
         )}
       </div>
-    )
-  }
+    );
+  };
 
   return (
     <>
@@ -240,7 +249,7 @@ const EmployeeModal = ({ employee, onClose, onUpdate }) => {
         </div>
       </div>
     </>
-  )
-}
+  );
+};
 
-export default EmployeeModal
+export default EmployeeModal;

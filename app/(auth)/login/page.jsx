@@ -1,6 +1,6 @@
 "use client"
 import React, { useState } from 'react';
-import { Eye, EyeOff, Lock, Mail, User, Shield } from 'lucide-react';
+import { Eye, EyeOff, Lock, User } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '../../../contexts/AuthContext';
 import Image from 'next/image';
@@ -8,10 +8,8 @@ import axios from 'axios';
 
 const Login = () => {
   const [formData, setFormData] = useState({
-    email: '',
     username: '',
     password: '',
-    role: 'admin'
   });
   const [showPassword, setShowPassword] = useState(false);
   const [errors, setErrors] = useState({});
@@ -36,12 +34,6 @@ const Login = () => {
 
   const validateForm = () => {
     const newErrors = {};
-
-    if (!formData.email.trim()) {
-      newErrors.email = 'Email is required';
-    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
-      newErrors.email = 'Please enter a valid email address';
-    }
 
     if (!formData.username.trim()) {
       newErrors.username = 'Username is required';
@@ -70,7 +62,7 @@ const Login = () => {
       const response = await axios.post('http://localhost:3001/api/login', {
         username: formData.username,
         password: formData.password,
-        role: formData.role
+        role: 'admin'
       });
 
       const data = response.data;
@@ -105,7 +97,7 @@ const Login = () => {
 
   return (
     <div className="h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 flex items-center justify-center p-4 overflow-hidden">
-      {/* Background decoration */}
+
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute -top-40 -right-40 w-80 h-80 bg-gradient-to-br from-blue-400/20 to-indigo-600/20 rounded-full blur-3xl"></div>
         <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-gradient-to-tr from-purple-400/20 to-blue-600/20 rounded-full blur-3xl"></div>
@@ -139,34 +131,6 @@ const Login = () => {
                 <p className="text-sm text-red-600 font-medium">{errors.general}</p>
               </div>
             )}
-
-            {/* Email Field */}
-            <div className="space-y-2">
-              <label htmlFor="email" className="block text-sm font-semibold text-slate-700">
-                Email Address
-              </label>
-              <div className="relative group">
-                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                  <Mail className="h-5 w-5 text-slate-400 group-focus-within:text-blue-500 transition-colors" />
-                </div>
-                <input
-                  type="email"
-                  id="email"
-                  name="email"
-                  value={formData.email}
-                  onChange={handleInputChange}
-                  className={`block w-full pl-12 pr-4 py-3 bg-slate-50/50 border-2 rounded-xl focus:ring-0 focus:bg-white transition-all duration-200 placeholder:text-slate-400 ${
-                    errors.email 
-                      ? 'border-red-300 focus:border-red-500' 
-                      : 'border-slate-200 focus:border-blue-500 hover:border-slate-300'
-                  }`}
-                  placeholder="Enter your email address"
-                />
-              </div>
-              {errors.email && (
-                <p className="text-sm text-red-600 font-medium">{errors.email}</p>
-              )}
-            </div>
 
             {/* Username Field */}
             <div className="space-y-2">
@@ -233,28 +197,6 @@ const Login = () => {
               {errors.password && (
                 <p className="text-sm text-red-600 font-medium">{errors.password}</p>
               )}
-            </div>
-
-            {/* Role Field */}
-            <div className="space-y-2">
-              <label htmlFor="role" className="block text-sm font-semibold text-slate-700">
-                Role
-              </label>
-              <div className="relative group">
-                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                  <Shield className="h-5 w-5 text-slate-400 group-focus-within:text-blue-500 transition-colors" />
-                </div>
-                <select
-                  id="role"
-                  name="role"
-                  value={formData.role}
-                  onChange={handleInputChange}
-                  className="block w-full pl-12 pr-4 py-3 bg-slate-50/50 border-2 border-slate-200 rounded-xl focus:ring-0 focus:border-blue-500 focus:bg-white hover:border-slate-300 transition-all duration-200 cursor-pointer"
-                >
-                  <option value="admin">Admin</option>
-                  {/* <option value="employee">Employee</option> */}
-                </select>
-              </div>
             </div>
 
             {/* Submit Button */}

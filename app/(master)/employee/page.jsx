@@ -7,7 +7,7 @@ import EmployeeTable from "@/components/EmployeeTable"
 import EmployeeModal from "@/components/EmployeeModal"
 import AddEmployeeModal from "@/components/AddEmployeeModal"
 import ErrorAlert from "@/components/ui/ErrorAlert"
-import { Plus, X } from "lucide-react"
+import { Plus, X, Filter } from "lucide-react"
 import { useAuth } from "../../../contexts/AuthContext"
 import { useRouter } from "next/navigation"
 import { ToastContainer, toast } from 'react-toastify'
@@ -18,6 +18,8 @@ const EmployeeManagement = () => {
   const router = useRouter()
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [employees, setEmployees] = useState([])
+  const [filteredEmployees, setFilteredEmployees] = useState([])
+  const [statusFilter, setStatusFilter] = useState('all') // 'all', 'active', 'inactive'
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isAddModalOpen, setIsAddModalOpen] = useState(false)
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
@@ -33,6 +35,17 @@ const EmployeeManagement = () => {
       router.push("/login")
     }
   }, [isAuthenticated, user, router])
+
+  // Filter employees based on is_active status
+  useEffect(() => {
+    if (statusFilter === 'all') {
+      setFilteredEmployees(employees)
+    } else if (statusFilter === 'active') {
+      setFilteredEmployees(employees.filter(emp => emp.is_active === 1))
+    } else if (statusFilter === 'inactive') {
+      setFilteredEmployees(employees.filter(emp => emp.is_active === 0))
+    }
+  }, [employees, statusFilter])
 
   // Fetch employees with JWT token from AuthContext
   const fetchEmployees = async () => {
@@ -217,6 +230,53 @@ const EmployeeManagement = () => {
     setSidebarOpen(!sidebarOpen)
   }
 
+  // Get is_active status counts
+  const statusCounts = {
+    all: employees.length,
+    active: employees.filter(emp => emp.is_active === 1).length,
+    inactive: employees.filter(emp => emp.is_active === 0).length
+  }
+
+  // Status Filter Component
+  const StatusFilter = () => (
+    <div className="flex items-center gap-2 mb-4">
+      <Filter size={16} className="text-gray-500" />
+      <span className="text-sm font-medium text-gray-700">Filter by Status:</span>
+      <div className="flex gap-2">
+        <button
+          onClick={() => setStatusFilter('all')}
+          className={`px-3 py-1 rounded-full text-sm font-medium transition-colors ${
+            statusFilter === 'all'
+              ? 'bg-blue-100 text-blue-800'
+              : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+          }`}
+        >
+          All ({statusCounts.all})
+        </button>
+        <button
+          onClick={() => setStatusFilter('active')}
+          className={`px-3 py-1 rounded-full text-sm font-medium transition-colors ${
+            statusFilter === 'active'
+              ? 'bg-green-100 text-green-800'
+              : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+          }`}
+        >
+          Active ({statusCounts.active})
+        </button>
+        <button
+          onClick={() => setStatusFilter('inactive')}
+          className={`px-3 py-1 rounded-full text-sm font-medium transition-colors ${
+            statusFilter === 'inactive'
+              ? 'bg-red-100 text-red-800'
+              : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+          }`}
+        >
+          Inactive ({statusCounts.inactive})
+        </button>
+      </div>
+    </div>
+  )
+
   // Delete Confirmation Modal Component
   const DeleteConfirmationModal = ({ isOpen, onClose, onConfirm, employee }) => {
     if (!isOpen) return null
@@ -287,13 +347,18 @@ const EmployeeManagement = () => {
                 <span className="sm:inline">Add Employee</span>
               </button>
             </div>
+            
             {error && <ErrorAlert message={error} onClose={() => setError(null)} />}
+            
+            <StatusFilter />
+            
             <EmployeeTable
-              employees={employees}
+              employees={filteredEmployees}
               loading={loading}
               onViewEmployee={handleViewEmployee}
               onDeleteEmployee={handleRequestDelete}
             />
+            
             {isModalOpen && selectedEmployee && (
               <EmployeeModal
                 employee={selectedEmployee}
@@ -301,12 +366,14 @@ const EmployeeManagement = () => {
                 onUpdate={handleUpdateEmployee}
               />
             )}
+            
             {isAddModalOpen && (
               <AddEmployeeModal
                 onClose={() => setIsAddModalOpen(false)}
                 onAdd={handleAddEmployee}
               />
             )}
+            
             {isDeleteModalOpen && employeeToDelete && (
               <DeleteConfirmationModal
                 isOpen={isDeleteModalOpen}
@@ -315,6 +382,7 @@ const EmployeeManagement = () => {
                 employee={employeeToDelete}
               />
             )}
+            
             <ToastContainer
               position="top-right"
               autoClose={3000}

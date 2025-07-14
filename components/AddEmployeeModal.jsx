@@ -214,7 +214,7 @@ const AddEmployeeModal = ({ onClose, onAdd }) => {
               type="submit"
               className="w-full sm:w-auto px-4 py-2 bg-sky-600 hover:bg-sky-700 text-white rounded-md transition-colors text-sm sm:text-base"
             >
-              Add Employee
+              Submit
             </button>
           </div>
         </form>
