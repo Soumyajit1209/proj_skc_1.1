@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import { X, User, Upload } from "lucide-react"
+import { toast } from 'react-toastify'
 
 const AddEmployeeModal = ({ onClose, onAdd }) => {
   const [formData, setFormData] = useState({
@@ -16,15 +17,18 @@ const AddEmployeeModal = ({ onClose, onAdd }) => {
   })
   const [previewImage, setPreviewImage] = useState(null)
 
+  // Debug log to verify onAdd prop
+  console.log("AddEmployeeModal: onAdd prop received:", typeof onAdd)
+
   const handleFileChange = (e) => {
     const file = e.target.files?.[0]
     if (file) {
       if (!file.type.startsWith("image/")) {
-        alert("Please upload an image file")
+        toast.error("Please upload an image file", { toastId: "invalid-image-type" })
         return
       }
       if (file.size > 5 * 1024 * 1024) {
-        alert("Image size should not exceed 5MB")
+        toast.error("Image size should not exceed 5MB", { toastId: "image-size-exceeded" })
         return
       }
 
@@ -40,6 +44,17 @@ const AddEmployeeModal = ({ onClose, onAdd }) => {
 
   const handleSubmit = (e) => {
     e.preventDefault()
+    // Validate required fields
+    if (!formData.full_name || !formData.username || !formData.password) {
+      toast.error("Full Name, Username, and Password are required", { toastId: "required-fields-error" })
+      return
+    }
+    if (!onAdd) {
+      toast.error("Add employee handler is not defined", { toastId: "onAdd-undefined" })
+      console.error("AddEmployeeModal: onAdd is undefined")
+      return
+    }
+    console.log("AddEmployeeModal: Submitting formData:", formData) // Debug log
     onAdd(formData)
   }
 
@@ -69,7 +84,6 @@ const AddEmployeeModal = ({ onClose, onAdd }) => {
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-2 sm:p-4 z-50">
       <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[95vh] sm:max-h-[90vh] overflow-y-auto mx-2 sm:mx-0">
-        {/* Header */}
         <div className="flex items-center justify-between p-4 sm:p-6 border-b border-gray-200">
           <h2 className="text-lg sm:text-xl font-semibold text-gray-900">Add New Employee</h2>
           <button onClick={handleClose} className="text-gray-400 hover:text-gray-600 transition-colors p-1">
@@ -77,10 +91,8 @@ const AddEmployeeModal = ({ onClose, onAdd }) => {
           </button>
         </div>
 
-        {/* Form */}
         <form onSubmit={handleSubmit} className="p-4 sm:p-6">
           <div className="space-y-4 sm:space-y-6">
-            {/* Profile Picture */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2 sm:mb-3">Profile Picture</label>
               <div className="flex flex-col sm:flex-row sm:items-center space-y-3 sm:space-y-0 sm:space-x-4">
@@ -105,7 +117,6 @@ const AddEmployeeModal = ({ onClose, onAdd }) => {
               </div>
             </div>
 
-            {/* Form Fields */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
               <div className="sm:col-span-2 sm:col-span-1">
                 <label className="block text-sm font-medium text-gray-700 mb-1">Full Name *</label>
@@ -191,7 +202,6 @@ const AddEmployeeModal = ({ onClose, onAdd }) => {
             </div>
           </div>
 
-          {/* Footer */}
           <div className="flex flex-col sm:flex-row justify-end space-y-2 sm:space-y-0 sm:space-x-3 mt-6 pt-4 sm:pt-6 border-t border-gray-200">
             <button
               type="button"

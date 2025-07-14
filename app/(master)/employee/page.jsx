@@ -10,6 +10,8 @@ import ErrorAlert from "@/components/ui/ErrorAlert"
 import { Plus, X } from "lucide-react"
 import { useAuth } from "../../../contexts/AuthContext"
 import { useRouter } from "next/navigation"
+import { ToastContainer, toast } from 'react-toastify'
+import 'react-toastify/dist/ReactToastify.css'
 
 const EmployeeManagement = () => {
   const { user, logout, isAuthenticated } = useAuth()
@@ -18,7 +20,9 @@ const EmployeeManagement = () => {
   const [employees, setEmployees] = useState([])
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isAddModalOpen, setIsAddModalOpen] = useState(false)
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
   const [selectedEmployee, setSelectedEmployee] = useState(null)
+  const [employeeToDelete, setEmployeeToDelete] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
 
@@ -33,7 +37,7 @@ const EmployeeManagement = () => {
   // Fetch employees with JWT token from AuthContext
   const fetchEmployees = async () => {
     if (!isAuthenticated || user?.role !== "admin") {
-      setError("Access denied. Admin role required.")
+      toast.error("Access denied. Admin role required.", { toastId: "auth-error" })
       logout()
       return
     }
@@ -48,7 +52,7 @@ const EmployeeManagement = () => {
       })
 
       if (response.status === 401) {
-        setError("Session expired. Please login again.")
+        toast.error("Session expired. Please login again.", { toastId: "session-expired" })
         logout()
         return
       }
@@ -61,8 +65,9 @@ const EmployeeManagement = () => {
       const data = await response.json()
       setEmployees(data)
       setLoading(false)
+      // toast.success("Employees loaded successfully", { toastId: "fetch-employees-success" })
     } catch (err) {
-      setError(err.message || "Failed to fetch employees")
+      toast.error(err.message || "Failed to fetch employees", { toastId: "fetch-employees-error" })
       setLoading(false)
     }
   }
@@ -80,7 +85,7 @@ const EmployeeManagement = () => {
 
   const handleUpdateEmployee = async (updatedEmployee) => {
     if (!isAuthenticated || user?.role !== "admin") {
-      setError("Access denied. Admin role required.")
+      toast.error("Access denied. Admin role required.", { toastId: "auth-error-update" })
       logout()
       return
     }
@@ -96,7 +101,7 @@ const EmployeeManagement = () => {
       })
 
       if (response.status === 401) {
-        setError("Session expired. Please login again.")
+        toast.error("Session expired. Please login again.", { toastId: "session-expired-update" })
         logout()
         return
       }
@@ -108,54 +113,21 @@ const EmployeeManagement = () => {
 
       setIsModalOpen(false)
       fetchEmployees()
+      toast.success("Employee updated successfully", { toastId: "update-employee-success" })
     } catch (err) {
-      setError(err.message || "Failed to update employee")
-    }
-  }
-
-  const handleDeleteEmployee = async (emp_id) => {
-    if (!isAuthenticated || user?.role !== "admin") {
-      setError("Access denied. Admin role required.")
-      logout()
-      return
-    }
-
-    if (window.confirm("Are you sure you want to delete this employee?")) {
-      try {
-        const response = await fetch(`http://localhost:3001/api/admin/employee/${emp_id}`, {
-          method: "DELETE",
-          headers: {
-            Authorization: `Bearer ${user.token}`,
-            "Content-Type": "application/json",
-          },
-        })
-
-        if (response.status === 401) {
-          setError("Session expired. Please login again.")
-          logout()
-          return
-        }
-
-        if (!response.ok) {
-          const errorData = await response.json()
-          throw new Error(errorData.error || "Failed to delete employee")
-        }
-
-        fetchEmployees()
-      } catch (err) {
-        setError(err.message || "Failed to delete employee")
-      }
+      toast.error(err.message || "Failed to update employee", { toastId: "update-employee-error" })
     }
   }
 
   const handleAddEmployee = async (newEmployee) => {
     if (!isAuthenticated || user?.role !== "admin") {
-      setError("Access denied. Admin role required.")
+      toast.error("Access denied. Admin role required.", { toastId: "auth-error-add" })
       logout()
       return
     }
 
     try {
+      console.log("Adding employee:", newEmployee) // Debug log
       const response = await fetch("http://localhost:3001/api/admin/employee", {
         method: "POST",
         headers: {
@@ -166,7 +138,7 @@ const EmployeeManagement = () => {
       })
 
       if (response.status === 401) {
-        setError("Session expired. Please login again.")
+        toast.error("Session expired. Please login again.", { toastId: "session-expired-add" })
         logout()
         return
       }
@@ -178,13 +150,106 @@ const EmployeeManagement = () => {
 
       setIsAddModalOpen(false)
       fetchEmployees()
+      toast.success("Employee added successfully", { toastId: "add-employee-success" })
     } catch (err) {
-      setError(err.message || "Failed to add employee")
+      console.error("Add employee error:", err) // Debug log
+      toast.error(err.message || "Failed to add employee", { toastId: "add-employee-error" })
     }
+  }
+
+  // Debug log after handleAddEmployee to avoid TDZ
+  console.log("EmployeeManagement: handleAddEmployee defined:", typeof handleAddEmployee)
+
+  const handleDeleteEmployee = async (emp_id) => {
+    if (!isAuthenticated || user?.role !== "admin") {
+      toast.error("Access denied. Admin role required.", { toastId: "auth-error-delete" })
+      logout()
+      return
+    }
+
+    try {
+      console.log("Deleting employee ID:", emp_id) // Debug log
+      const response = await fetch(`http://localhost:3001/api/admin/employee/${emp_id}`, {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${user.token}`,
+          "Content-Type": "application/json",
+        },
+      })
+
+      if (response.status === 401) {
+        toast.error("Session expired. Please login again.", { toastId: "session-expired-delete" })
+        logout()
+        return
+      }
+
+      if (response.status === 404) {
+        toast.error("Employee not found. They may have already been deleted.", { toastId: "delete-employee-404" })
+        return
+      }
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || "Failed to delete employee")
+      }
+
+      fetchEmployees()
+      toast.success("Employee deleted successfully", { toastId: "delete-employee-success" })
+    } catch (err) {
+      console.error("Delete error:", err) // Debug log
+      toast.error(err.message || "Failed to delete employee", { toastId: "delete-employee-error" })
+    } finally {
+      setIsDeleteModalOpen(false)
+      setEmployeeToDelete(null)
+    }
+  }
+
+  const handleRequestDelete = (employee) => {
+    if (!employee || !employee.emp_id) {
+      toast.error("Invalid employee selected for deletion", { toastId: "invalid-employee-delete" })
+      return
+    }
+    setEmployeeToDelete(employee)
+    setIsDeleteModalOpen(true)
   }
 
   const toggleSidebar = () => {
     setSidebarOpen(!sidebarOpen)
+  }
+
+  // Delete Confirmation Modal Component
+  const DeleteConfirmationModal = ({ isOpen, onClose, onConfirm, employee }) => {
+    if (!isOpen) return null
+
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="bg-white rounded-lg p-6 max-w-md w-full">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-medium text-gray-900">Confirm Deletion</h2>
+            <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
+              <X size={24} />
+            </button>
+          </div>
+          <p className="text-gray-600 mb-6">
+            Are you sure you want to delete {employee?.full_name || employee?.name || 'this employee'}? This action cannot be undone.
+          </p>
+          <div className="flex justify-end gap-4">
+            <button
+              onClick={onClose}
+              className="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={() => onConfirm(employee.emp_id)}
+              className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+            >
+              Delete
+            </button>
+          </div>
+        </div>
+      </div>
+    )
   }
 
   // Render access denied message if not admin
@@ -205,13 +270,10 @@ const EmployeeManagement = () => {
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col lg:flex-row">
       <Sidebar isOpen={sidebarOpen} toggleSidebar={toggleSidebar} />
-
       <div className="flex-1 flex flex-col min-w-0">
         <Header toggleSidebar={toggleSidebar} />
-
         <main className="flex-1 p-3 sm:p-4 lg:p-6">
           <div className="max-w-7xl mx-auto">
-            {/* Header Section */}
             <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-4 sm:mb-6">
               <div>
                 <h1 className="text-xl sm:text-2xl font-semibold text-gray-900">Employee Management</h1>
@@ -225,19 +287,13 @@ const EmployeeManagement = () => {
                 <span className="sm:inline">Add Employee</span>
               </button>
             </div>
-
-            {/* Error Alert */}
             {error && <ErrorAlert message={error} onClose={() => setError(null)} />}
-
-            {/* Employee Table */}
             <EmployeeTable
               employees={employees}
               loading={loading}
               onViewEmployee={handleViewEmployee}
-              onDeleteEmployee={handleDeleteEmployee}
+              onDeleteEmployee={handleRequestDelete}
             />
-
-            {/* Modals */}
             {isModalOpen && selectedEmployee && (
               <EmployeeModal
                 employee={selectedEmployee}
@@ -245,8 +301,32 @@ const EmployeeManagement = () => {
                 onUpdate={handleUpdateEmployee}
               />
             )}
-
-            {isAddModalOpen && <AddEmployeeModal onClose={() => setIsAddModalOpen(false)} onAdd={handleAddEmployee} />}
+            {isAddModalOpen && (
+              <AddEmployeeModal
+                onClose={() => setIsAddModalOpen(false)}
+                onAdd={handleAddEmployee}
+              />
+            )}
+            {isDeleteModalOpen && employeeToDelete && (
+              <DeleteConfirmationModal
+                isOpen={isDeleteModalOpen}
+                onClose={() => setIsDeleteModalOpen(false)}
+                onConfirm={handleDeleteEmployee}
+                employee={employeeToDelete}
+              />
+            )}
+            <ToastContainer
+              position="top-right"
+              autoClose={3000}
+              hideProgressBar={false}
+              newestOnTop
+              closeOnClick
+              rtl={false}
+              pauseOnFocusLoss
+              draggable
+              pauseOnHover
+              theme="light"
+            />
           </div>
         </main>
       </div>

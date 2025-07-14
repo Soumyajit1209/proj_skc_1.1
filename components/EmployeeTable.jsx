@@ -72,7 +72,7 @@ const EmployeeTable = ({ employees, loading, onViewEmployee, onDeleteEmployee })
               </button>
               <button
                 onClick={() => {
-                  onDeleteEmployee(employee.emp_id);
+                  onDeleteEmployee(employee);
                   setActiveDropdown(null);
                 }}
                 className="w-full px-3 py-2 text-left text-sm text-red-600 hover:bg-red-50 flex items-center"
@@ -100,14 +100,12 @@ const EmployeeTable = ({ employees, loading, onViewEmployee, onDeleteEmployee })
 
   return (
     <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-      {/* Compact Header with Search */}
       <div className="px-3 sm:px-4 py-2 border-b border-gray-200">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
           <h2 className="text-sm sm:text-base font-medium text-gray-900">
             Employee Directory ({filteredEmployees.length})
           </h2>
           
-          {/* Search Bar */}
           <div className="relative">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
               <Search className="h-4 w-4 text-gray-400" />
@@ -131,7 +129,6 @@ const EmployeeTable = ({ employees, loading, onViewEmployee, onDeleteEmployee })
         </div>
       </div>
 
-      {/* Mobile View */}
       <div className="block sm:hidden">
         <div className="p-2">
           {loading ? (
@@ -154,7 +151,6 @@ const EmployeeTable = ({ employees, loading, onViewEmployee, onDeleteEmployee })
         </div>
       </div>
 
-      {/* Desktop/Tablet View */}
       <div className="hidden sm:block overflow-x-auto">
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
@@ -239,7 +235,7 @@ const EmployeeTable = ({ employees, loading, onViewEmployee, onDeleteEmployee })
                         <Eye size={14} />
                       </button>
                       <button
-                        onClick={() => onDeleteEmployee(employee.emp_id)}
+                        onClick={() => onDeleteEmployee(employee)}
                         className="p-1.5 text-red-600 hover:bg-red-50 rounded transition-colors"
                         title="Delete Employee"
                       >
