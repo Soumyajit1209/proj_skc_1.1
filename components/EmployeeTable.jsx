@@ -6,14 +6,21 @@ const EmployeeTable = ({ employees, loading, onViewEmployee, onDeleteEmployee })
   const [searchTerm, setSearchTerm] = useState('');
 
   const filteredEmployees = useMemo(() => {
-    if (!searchTerm) return employees;
+    let result = employees;
     
-    return employees.filter(employee =>
-      employee.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      employee.username.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      employee.email_id?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      employee.phone_no?.includes(searchTerm) ||
-      employee.emp_id.toString().includes(searchTerm)
+    if (searchTerm) {
+      result = employees.filter(employee =>
+        employee.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        employee.username.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        employee.email_id?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        employee.phone_no?.includes(searchTerm) ||
+        employee.emp_id.toString().includes(searchTerm)
+      );
+    }
+
+    // Sort employees alphabetically by full_name
+    return [...result].sort((a, b) => 
+      a.full_name.localeCompare(b.full_name)
     );
   }, [employees, searchTerm]);
 
@@ -50,7 +57,7 @@ const EmployeeTable = ({ employees, loading, onViewEmployee, onDeleteEmployee })
           <div className="flex-shrink-0">
             {employee.profile_picture ? (
               <img
-                src={employee.profile_picture || "/placeholder.svg"}
+                src={`http://localhost:3001${employee.profile_picture}`}
                 alt={employee.full_name}
                 className="w-10 h-10 rounded-full object-cover"
               />
@@ -135,7 +142,7 @@ const EmployeeTable = ({ employees, loading, onViewEmployee, onDeleteEmployee })
               placeholder="Search employees..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="block w-full sm:w-64 pl-10 pr-8 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-sky-500 focus:border-sky-500 placeholder-gray-500"
+              className="block w-full sm:w-64 pl-10 pr-8 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-sky-500 focus:border-sky-500 placeholder-gray-400"
             />
             {searchTerm && (
               <button
@@ -216,15 +223,15 @@ const EmployeeTable = ({ employees, loading, onViewEmployee, onDeleteEmployee })
                 <tr key={employee.emp_id} className="hover:bg-gray-50">
                   <td className="px-3 lg:px-4 py-2 whitespace-nowrap">
                     <div className="flex items-center">
-                      <div className="flex-shrink-0 w-8 h-8 mr-3">
+                      <div className="flex-shrink-0 w-8 h-8 mr-3-">
                         {employee.profile_picture ? (
                           <img
-                            src={employee.profile_picture || "/placeholder.svg"}
+                            src={`http://localhost:3001${employee.profile_picture}`}
                             alt={employee.full_name}
                             className="w-8 h-8 rounded-full object-cover"
                           />
                         ) : (
-                          <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center">
+                          <div className="w-8 h-8 bg-gray-200 wokół flex items-center justify-center">
                             <User className="w-4 h-4 text-gray-500" />
                           </div>
                         )}

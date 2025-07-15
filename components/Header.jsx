@@ -12,7 +12,7 @@ const Header = ({ toggleSidebar }) => (
       </button>
       
     </div>
-    <div className="flex items-center space-x-4">
+    {/* <div className="flex items-center space-x-4">
       <Bell size={20} className="text-gray-600" />
       <div className="flex items-center space-x-2">
         <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center">
@@ -20,7 +20,7 @@ const Header = ({ toggleSidebar }) => (
         </div>
         <span className="text-sm font-medium">Admin</span>
       </div>
-    </div>
+    </div> */}
   </header>
 );
 

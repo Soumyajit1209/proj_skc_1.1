@@ -2,13 +2,17 @@
 
 import { useState } from "react"
 import { X, User, Upload, Edit2, Check, X as XIcon } from "lucide-react"
+import { toast } from 'react-toastify'
 
 const EmployeeModal = ({ employee, onClose, onUpdate }) => {
   const [formData, setFormData] = useState({
     ...employee,
     is_active: Number(employee.is_active), // Ensure is_active is a number
   });
-  const [previewImage, setPreviewImage] = useState(employee.profile_picture || null);
+  const [profilePictureFile, setProfilePictureFile] = useState(null);
+  const [previewImage, setPreviewImage] = useState(
+    employee.profile_picture ? `http://localhost:3001${employee.profile_picture}` : null
+  );
   const [isEditing, setIsEditing] = useState(false);
 
   // Add CSS to hide scrollbar for webkit browsers
@@ -26,28 +30,47 @@ const EmployeeModal = ({ employee, onClose, onUpdate }) => {
     const file = e.target.files?.[0];
     if (file) {
       if (!file.type.startsWith("image/")) {
-        alert("Please upload an image file");
+        toast.error("Please upload an image file", { toastId: "invalid-image-type" });
         return;
       }
       if (file.size > 5 * 1024 * 1024) {
-        alert("Image size should not exceed 5MB");
+        toast.error("Image size should not exceed 5MB", { toastId: "image-size-exceeded" });
         return;
       }
 
+      setProfilePictureFile(file);
       const reader = new FileReader();
       reader.onloadend = () => {
-        const result = reader.result;
-        setFormData({ ...formData, profile_picture: result });
-        setPreviewImage(result);
+        setPreviewImage(reader.result);
       };
       reader.readAsDataURL(file);
     }
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!formData.full_name || !formData.username) {
+      toast.error("Full Name and Username are required", { toastId: "required-fields-error" });
+      return;
+    }
+
+    const formDataToSend = new FormData();
+    formDataToSend.append('full_name', formData.full_name);
+    formDataToSend.append('phone_no', formData.phone_no);
+    formDataToSend.append('email_id', formData.email_id);
+    formDataToSend.append('aadhaar_no', formData.aadhaar_no);
+    formDataToSend.append('username', formData.username);
+    if (formData.password) {
+      formDataToSend.append('password', formData.password);
+    }
+    formDataToSend.append('is_active', formData.is_active);
+    formDataToSend.append('emp_id', formData.emp_id);
+    if (profilePictureFile) {
+      formDataToSend.append('profile_picture', profilePictureFile);
+    }
+
     console.log('Submitting formData:', formData, 'is_active type:', typeof formData.is_active);
-    onUpdate(formData);
+    onUpdate(formDataToSend);
     setIsEditing(false);
   };
 
@@ -70,7 +93,8 @@ const EmployeeModal = ({ employee, onClose, onUpdate }) => {
       ...employee,
       is_active: Number(employee.is_active),
     });
-    setPreviewImage(employee.profile_picture || null);
+    setProfilePictureFile(null);
+    setPreviewImage(employee.profile_picture ? `http://localhost:3001${employee.profile_picture}` : null);
     setIsEditing(false);
   };
 
@@ -162,7 +186,7 @@ const EmployeeModal = ({ employee, onClose, onUpdate }) => {
                   <div className="relative mx-auto sm:mx-0">
                     {previewImage ? (
                       <img
-                        src={previewImage || "/placeholder.svg"}
+                        src={previewImage}
                         alt="Profile Preview"
                         className="w-16 h-16 object-cover rounded-full border-2 border-gray-200"
                       />

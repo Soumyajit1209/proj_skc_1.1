@@ -12,6 +12,7 @@ import { useAuth } from "../../../contexts/AuthContext"
 import { useRouter } from "next/navigation"
 import { ToastContainer, toast } from 'react-toastify'
 import 'react-toastify/dist/ReactToastify.css'
+import axios from 'axios'
 
 const EmployeeManagement = () => {
   const { user, logout, isAuthenticated } = useAuth()
@@ -55,9 +56,9 @@ const EmployeeManagement = () => {
       return
     }
 
-    try {
+     try {
       setLoading(true)
-      const response = await fetch("http://localhost:3001/api/admin/all-employees", {
+      const response = await axios.get(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/admin/all-employees`, {
         headers: {
           Authorization: `Bearer ${user.token}`,
           "Content-Type": "application/json",
@@ -70,17 +71,12 @@ const EmployeeManagement = () => {
         return
       }
 
-      if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error || "Failed to fetch employees")
-      }
-
-      const data = await response.json()
-      setEmployees(data)
+      setEmployees(response.data)
       setLoading(false)
       // toast.success("Employees loaded successfully", { toastId: "fetch-employees-success" })
     } catch (err) {
-      toast.error(err.message || "Failed to fetch employees", { toastId: "fetch-employees-error" })
+      const errorMessage = err.response?.data?.error || err.message || "Failed to fetch employees"
+      toast.error(errorMessage, { toastId: "fetch-employees-error" })
       setLoading(false)
     }
   }
@@ -103,15 +99,16 @@ const EmployeeManagement = () => {
       return
     }
 
-    try {
-      const response = await fetch(`http://localhost:3001/api/admin/employee/${updatedEmployee.emp_id}`, {
-        method: "PUT",
-        headers: {
-          Authorization: `Bearer ${user.token}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(updatedEmployee),
-      })
+     try {
+      const response = await axios.put(
+        `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/admin/employee/${updatedEmployee.get('emp_id')}`,
+        updatedEmployee,
+        {
+          headers: {
+            Authorization: `Bearer ${user.token}`,
+          },
+        }
+      )
 
       if (response.status === 401) {
         toast.error("Session expired. Please login again.", { toastId: "session-expired-update" })
@@ -119,16 +116,12 @@ const EmployeeManagement = () => {
         return
       }
 
-      if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error || "Failed to update employee")
-      }
-
       setIsModalOpen(false)
       fetchEmployees()
       toast.success("Employee updated successfully", { toastId: "update-employee-success" })
     } catch (err) {
-      toast.error(err.message || "Failed to update employee", { toastId: "update-employee-error" })
+      const errorMessage = err.response?.data?.error || err.message || "Failed to update employee"
+      toast.error(errorMessage, { toastId: "update-employee-error" })
     }
   }
 
@@ -140,15 +133,27 @@ const EmployeeManagement = () => {
     }
 
     try {
-      console.log("Adding employee:", newEmployee) // Debug log
-      const response = await fetch("http://localhost:3001/api/admin/employee", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${user.token}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(newEmployee),
-      })
+      const formData = new FormData();
+      formData.append('full_name', newEmployee.full_name);
+      formData.append('phone_no', newEmployee.phone_no);
+      formData.append('email_id', newEmployee.email_id);
+      formData.append('aadhaar_no', newEmployee.aadhaar_no);
+      formData.append('username', newEmployee.username);
+      formData.append('password', newEmployee.password);
+      formData.append('is_active', newEmployee.is_active);
+      if (newEmployee.profilePictureFile) {
+        formData.append('profile_picture', newEmployee.profilePictureFile);
+      }
+
+        const response = await axios.post(
+        `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/admin/employee`,
+        formData,
+        {
+          headers: {
+            Authorization: `Bearer ${user.token}`,
+          },
+        }
+      );
 
       if (response.status === 401) {
         toast.error("Session expired. Please login again.", { toastId: "session-expired-add" })
@@ -156,22 +161,14 @@ const EmployeeManagement = () => {
         return
       }
 
-      if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error || "Failed to add employee")
-      }
-
       setIsAddModalOpen(false)
       fetchEmployees()
       toast.success("Employee added successfully", { toastId: "add-employee-success" })
     } catch (err) {
-      console.error("Add employee error:", err) // Debug log
-      toast.error(err.message || "Failed to add employee", { toastId: "add-employee-error" })
+      const errorMessage = err.response?.data?.error || err.message || "Failed to add employee"
+      toast.error(errorMessage, { toastId: "add-employee-error" })
     }
   }
-
-  // Debug log after handleAddEmployee to avoid TDZ
-  console.log("EmployeeManagement: handleAddEmployee defined:", typeof handleAddEmployee)
 
   const handleDeleteEmployee = async (emp_id) => {
     if (!isAuthenticated || user?.role !== "admin") {
@@ -180,16 +177,17 @@ const EmployeeManagement = () => {
       return
     }
 
-    try {
+     try {
       console.log("Deleting employee ID:", emp_id) // Debug log
-      const response = await fetch(`http://localhost:3001/api/admin/employee/${emp_id}`, {
-        method: "DELETE",
-        headers: {
-          Authorization: `Bearer ${user.token}`,
-          "Content-Type": "application/json",
-        },
-      })
-
+      const response = await axios.delete(
+        `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/admin/employee/${emp_id}`,
+        {
+          headers: {
+            Authorization: `Bearer ${user.token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      )
       if (response.status === 401) {
         toast.error("Session expired. Please login again.", { toastId: "session-expired-delete" })
         logout()
@@ -201,16 +199,11 @@ const EmployeeManagement = () => {
         return
       }
 
-      if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error || "Failed to delete employee")
-      }
-
       fetchEmployees()
       toast.success("Employee deleted successfully", { toastId: "delete-employee-success" })
     } catch (err) {
-      console.error("Delete error:", err) // Debug log
-      toast.error(err.message || "Failed to delete employee", { toastId: "delete-employee-error" })
+      const errorMessage = err.response?.data?.error || err.message || "Failed to delete employee"
+      toast.error(errorMessage, { toastId: "delete-employee-error" })
     } finally {
       setIsDeleteModalOpen(false)
       setEmployeeToDelete(null)
@@ -313,19 +306,19 @@ const EmployeeManagement = () => {
   }
 
   // Render access denied message if not admin
-  if (!isAuthenticated || user?.role !== "admin") {
-    return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
-        <div className="bg-white rounded-lg shadow-lg p-6 max-w-md w-full text-center">
-          <div className="w-12 h-12 mx-auto bg-red-100 rounded-full flex items-center justify-center mb-4">
-            <X className="w-6 h-6 text-red-600" />
-          </div>
-          <h2 className="text-xl font-semibold text-gray-800 mb-2">Access Denied</h2>
-          <p className="text-gray-600">Admin role required to access this page.</p>
-        </div>
-      </div>
-    )
-  }
+  // if (!isAuthenticated || user?.role !== "admin") {
+  //   return (
+  //     <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
+  //       <div className="bg-white rounded-lg shadow-lg p-6 max-w-md w-full text-center">
+  //         <div className="w-12 h-12 mx-auto bg-red-100 rounded-full flex items-center justify-center mb-4">
+  //           <X className="w-6 h-6 text-red-600" />
+  //         </div>
+  //         <h2 className="text-xl font-semibold text-gray-800 mb-2">Access Denied</h2>
+  //         <p className="text-gray-600">Admin role required to access this page.</p>
+  //       </div>
+  //     </div>
+  //   )
+  // }
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col lg:flex-row">

@@ -1,224 +1,322 @@
-"use client"
-import React, { useState } from 'react';
+"use client";
+import * as React from 'react';
+import { useState, useEffect } from 'react';
+import axios from 'axios';
 import Header from '@/components/Header';
 import Sidebar from '@/components/Sidebar';
-import { Calendar, Download, Filter, Plus } from 'lucide-react';
+import ErrorAlert from '@/components/ui/ErrorAlert';
+import { useAuth } from "../../contexts/AuthContext";
+import { useRouter } from 'next/navigation';
+import { ToastContainer, toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
+import LeaveFilters from '@/components/LeaveFilters';
+import SummaryStats from '@/components/SummaryStats';
+import LeaveTable from '@/components/LeaveTable';
+import LeaveDetailsModal from '@/components/LeaveDetailsModal';
+import { Download , X , Filter} from 'lucide-react';
 
 const LeaveReport = () => {
+  const { user, logout, isAuthenticated } = useAuth();
+  const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [leaveData, setLeaveData] = useState([
-    {
-      id: 1,
-      employeeName: 'John Doe',
-      leaveType: 'Casual Leave',
-      fromDate: '2025-07-15',
-      toDate: '2025-07-17',
-      days: 3,
-      reason: 'Personal work',
-      status: 'Approved',
-      appliedDate: '2025-07-10'
-    },
-    {
-      id: 2,
-      employeeName: 'Jane Smith',
-      leaveType: 'Sick Leave',
-      fromDate: '2025-07-12',
-      toDate: '2025-07-12',
-      days: 1,
-      reason: 'Fever',
-      status: 'Approved',
-      appliedDate: '2025-07-11'
-    },
-    {
-      id: 3,
-      employeeName: 'Mike Johnson',
-      leaveType: 'Annual Leave',
-      fromDate: '2025-07-20',
-      toDate: '2025-07-25',
-      days: 6,
-      reason: 'Family vacation',
-      status: 'Pending',
-      appliedDate: '2025-07-09'
-    },
-    {
-      id: 4,
-      employeeName: 'Sarah Wilson',
-      leaveType: 'Maternity Leave',
-      fromDate: '2025-08-01',
-      toDate: '2025-11-30',
-      days: 90,
-      reason: 'Maternity leave',
-      status: 'Approved',
-      appliedDate: '2025-07-01'
+  const [leaveData, setLeaveData] = useState([]);
+  const [filteredData, setFilteredData] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [selectedLeave, setSelectedLeave] = useState(null);
+  const [showDetailModal, setShowDetailModal] = useState(false);
+  const [filterStatus, setFilterStatus] = useState('ALL');
+  const [filterDateRange, setFilterDateRange] = useState({ from: '', to: '' });
+  const [showFilters, setShowFilters] = useState(false);
+
+  const toggleSidebar = () => setSidebarOpen(!sidebarOpen);
+
+  // Check if user is admin
+  useEffect(() => {
+    if (isAuthenticated && user?.role !== 'admin') {
+      setError('Access denied. Admin role required.');
+      toast.error('Access denied. Admin role required.', { toastId: 'auth-error' });
+      logout();
+      router.push('/login');
     }
-  ]);
+  }, [isAuthenticated, user, logout, router]);
 
-  const toggleSidebar = () => {
-    setSidebarOpen(!sidebarOpen);
-  };
+  // Fetch leave data
+  const fetchLeaves = async () => {
+    if (!isAuthenticated || user?.role !== 'admin') {
+      toast.error('Access denied. Admin role required.', { toastId: 'auth-error-fetch' });
+      logout();
+      router.push('/login');
+      return;
+    }
 
-  const getStatusColor = (status) => {
-    switch (status) {
-      case 'Approved':
-        return 'bg-green-100 text-green-800';
-      case 'Pending':
-        return 'bg-yellow-100 text-yellow-800';
-      case 'Rejected':
-        return 'bg-red-100 text-red-800';
-      default:
-        return 'bg-gray-100 text-gray-800';
+    try {
+      setLoading(true);
+      const response = await axios.get(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/admin/leaves`, {
+        headers: {
+          Authorization: `Bearer ${user.token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (response.status === 401) {
+        toast.error('Session expired. Please login again.', { toastId: 'session-expired-fetch' });
+        logout();
+        router.push('/login');
+        return;
+      }
+
+      setLeaveData(response.data);
+      setFilteredData(response.data);
+      setLoading(false);
+    } catch (err) {
+      const errorMessage = err.response?.data?.error || err.message || 'Failed to fetch leave applications';
+      toast.error(errorMessage, { toastId: 'fetch-leaves-error' });
+      setError(errorMessage);
+      setLoading(false);
     }
   };
 
-  const getLeaveTypeColor = (type) => {
-    switch (type) {
-      case 'Casual Leave':
-        return 'bg-blue-100 text-blue-800';
-      case 'Sick Leave':
-        return 'bg-orange-100 text-orange-800';
-      case 'Annual Leave':
-        return 'bg-purple-100 text-purple-800';
-      case 'Maternity Leave':
-        return 'bg-pink-100 text-pink-800';
-      default:
-        return 'bg-gray-100 text-gray-800';
+  useEffect(() => {
+    if (isAuthenticated && user?.role === 'admin') {
+      fetchLeaves();
+    }
+  }, [isAuthenticated, user]);
+
+  // Filter leaves
+  useEffect(() => {
+    const filtered = leaveData.filter(leave => {
+      if (filterStatus !== 'ALL' && leave.status !== filterStatus) return false;
+      if (filterDateRange.from && leave.application_datetime < filterDateRange.from) return false;
+      if (filterDateRange.to && leave.application_datetime > filterDateRange.to) return false;
+      return true;
+    });
+    setFilteredData(filtered);
+  }, [leaveData, filterStatus, filterDateRange]);
+
+  const handleStatusChange = async (leaveId, newStatus) => {
+    if (!isAuthenticated || user?.role !== 'admin') {
+      toast.error('Access denied. Admin role required.', { toastId: 'auth-error-update' });
+      logout();
+      router.push('/login');
+      return;
+    }
+
+    try {
+      const response = await axios.put(
+        `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/admin/leaves/${leaveId}`,
+        { status: newStatus },
+        {
+          headers: {
+            Authorization: `Bearer ${user.token}`,
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+
+      if (response.status === 401) {
+        toast.error('Session expired. Please login again.', { toastId: 'session-expired-update' });
+        logout();
+        router.push('/login');
+        return;
+      }
+
+      setLeaveData(leaveData.map(leave =>
+        leave.leave_id === leaveId
+          ? {
+              ...leave,
+              status: newStatus,
+              approved_by: 1,
+              approved_on: new Date().toISOString().slice(0, 19).replace('T', ' '),
+              approved_by_username: 'adminuser'
+            }
+          : leave
+      ));
+      setShowDetailModal(false);
+      toast.success(`Leave ${newStatus.toLowerCase()} successfully`, { toastId: 'update-leave-success' });
+    } catch (err) {
+      const errorMessage = err.response?.data?.error || err.message || 'Failed to update leave status';
+      toast.error(errorMessage, { toastId: 'update-leave-error' });
     }
   };
 
-  const handleStatusChange = (id, newStatus) => {
-    setLeaveData(leaveData.map(leave => 
-      leave.id === id 
-        ? { ...leave, status: newStatus }
-        : leave
-    ));
+  const handleViewDetails = async (leave) => {
+    if (!isAuthenticated || user?.role !== 'admin') {
+      toast.error('Access denied. Admin role required.', { toastId: 'auth-error-view' });
+      logout();
+      router.push('/login');
+      return;
+    }
+
+    try {
+      const response = await axios.get(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/admin/leaves/employee/${leave.emp_id}`, {
+        headers: {
+          Authorization: `Bearer ${user.token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (response.status === 401) {
+        toast.error('Session expired. Please login again.', { toastId: 'session-expired-view' });
+        logout();
+        router.push('/login');
+        return;
+      }
+
+      const detailedLeave = response.data.find(l => l.leave_id === leave.leave_id) || leave;
+      setSelectedLeave(detailedLeave);
+      setShowDetailModal(true);
+    } catch (err) {
+      const errorMessage = err.response?.data?.error || err.message || 'Failed to fetch leave details';
+      toast.error(errorMessage, { toastId: 'view-leave-error' });
+      setSelectedLeave(leave);
+      setShowDetailModal(true);
+    }
   };
+
+  const handleDownloadReport = async () => {
+    if (!isAuthenticated || user?.role !== 'admin') {
+      toast.error('Access denied. Admin role required.', { toastId: 'auth-error-download' });
+      logout();
+      router.push('/login');
+      return;
+    }
+
+    try {
+      const response = await axios.get(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/admin/leaves/download`, {
+        headers: {
+          Authorization: `Bearer ${user.token}`,
+          'Content-Type': 'application/json',
+        },
+        responseType: 'blob',
+      });
+
+      if (response.status === 401) {
+        toast.error('Session expired. Please login again.', { toastId: 'session-expired-download' });
+        logout();
+        router.push('/login');
+        return;
+      }
+
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', 'leave_report.pdf');
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      toast.success('Report downloaded successfully', { toastId: 'download-report-success' });
+    } catch (err) {
+      const errorMessage = err.response?.data?.error || err.message || 'Failed to download report';
+      toast.error(errorMessage, { toastId: 'download-report-error' });
+    }
+  };
+
+  const getSummaryStats = () => {
+    if (!filteredData || !Array.isArray(filteredData)) {
+      return { pending: 0, approved: 0, rejected: 0, totalDays: 0 };
+    }
+    return {
+      pending: filteredData.filter(l => l.status === 'PENDING').length,
+      approved: filteredData.filter(l => l.status === 'APPROVED').length,
+      rejected: filteredData.filter(l => l.status === 'REJECTED').length,
+      totalDays: filteredData.reduce((sum, l) => sum + (l.total_days || 0), 0),
+    };
+  };
+
+  if (!isAuthenticated || user?.role !== 'admin') {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
+        <div className="bg-white rounded-lg shadow-lg p-6 max-w-md w-full text-center">
+          <div className="w-12 h-12 mx-auto bg-red-100 rounded-full flex items-center justify-center mb-4">
+            <X className="w-6 h-6 text-red-600" />
+          </div>
+          <h2 className="text-xl font-semibold text-gray-800 mb-2">Access Denied</h2>
+          <p className="text-gray-600">Admin role required to access this page.</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading leave applications...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen bg-gray-100 flex flex-col md:flex-row">
+    <div className="min-h-screen bg-slate-50 flex flex-col lg:flex-row">
       <Sidebar isOpen={sidebarOpen} toggleSidebar={toggleSidebar} />
-      
-      <div className="flex-1 flex flex-col min-h-screen">
+      <div className="flex-1 flex flex-col min-w-0">
         <Header toggleSidebar={toggleSidebar} />
-        
-        <main className="flex-1 p-2 sm:p-3.5">
-          <div className="w-full max-w-7xl mx-auto">
-            <div className="mb-6 flex justify-between items-center">
+        <main className="flex-1 p-3 sm:p-4 lg:p-6">
+          <div className="max-w-7xl mx-auto">
+            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-4 sm:mb-6">
               <div>
-                <h1 className="text-2xl font-bold text-gray-800">Leave Report</h1>
-                <p className="text-gray-600 mt-2">Manage employee leave requests and history</p>
+                <h1 className="text-xl sm:text-2xl font-semibold text-gray-900">Leave Management</h1>
+                <p className="text-sm sm:text-base text-gray-600 mt-1">Manage and track employee leave applications</p>
               </div>
-              <div className="flex space-x-3">
-                <button className="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg flex items-center space-x-2 transition-colors">
-                  <Filter size={16} />
-                  <span>Filter</span>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  onClick={() => setShowFilters(!showFilters)}
+                  className="bg-gray-600 hover:bg-gray-700 text-white px-3 sm:px-4 py-2 rounded-lg flex items-center space-x-2 transition-colors text-sm sm:text-base"
+                >
+                  <Filter className="h-4 w-4 sm:h-5 sm:w-5" />
+                  <span>Filters</span>
                 </button>
-                <button className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg flex items-center space-x-2 transition-colors">
-                  <Download size={16} />
+                <button
+                  onClick={handleDownloadReport}
+                  className="bg-green-600 hover:bg-green-700 text-white px-3 sm:px-4 py-2 rounded-lg flex items-center space-x-2 transition-colors text-sm sm:text-base"
+                >
+                  <Download className="h-4 w-4 sm:h-5 sm:w-5" />
                   <span>Export</span>
                 </button>
               </div>
             </div>
 
-            {/* Summary Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-              <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
-                <div className="text-2xl font-bold text-yellow-600">1</div>
-                <div className="text-sm text-gray-600">Pending Requests</div>
-              </div>
-              <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
-                <div className="text-2xl font-bold text-green-600">3</div>
-                <div className="text-sm text-gray-600">Approved Leaves</div>
-              </div>
-              <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
-                <div className="text-2xl font-bold text-red-600">0</div>
-                <div className="text-sm text-gray-600">Rejected Requests</div>
-              </div>
-              <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
-                <div className="text-2xl font-bold text-blue-600">100</div>
-                <div className="text-sm text-gray-600">Total Leave Days</div>
-              </div>
-            </div>
-            
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 w-full">
-              <div className="px-4 sm:px-6 py-4 border-b">
-                <h2 className="text-base sm:text-lg font-semibold text-gray-800">Leave Applications</h2>
-              </div>
-              <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200 text-xs sm:text-sm">
-                  <thead className="bg-blue-400">
-                    <tr>
-                      <th className="px-3 sm:px-6 py-3 text-left text-xs font-bold text-white uppercase tracking-wider">
-                        Employee
-                      </th>
-                      <th className="px-3 sm:px-6 py-3 text-left text-xs font-bold text-white uppercase tracking-wider">
-                        Leave Type
-                      </th>
-                      <th className="px-3 sm:px-6 py-3 text-left text-xs font-bold text-white uppercase tracking-wider">
-                        From Date
-                      </th>
-                      <th className="px-3 sm:px-6 py-3 text-left text-xs font-bold text-white uppercase tracking-wider">
-                        To Date
-                      </th>
-                      <th className="px-3 sm:px-6 py-3 text-left text-xs font-bold text-white uppercase tracking-wider">
-                        Days
-                      </th>
-                      <th className="px-3 sm:px-6 py-3 text-left text-xs font-bold text-white uppercase tracking-wider">
-                        Reason
-                      </th>
-                      <th className="px-3 sm:px-6 py-3 text-left text-xs font-bold text-white uppercase tracking-wider">
-                        Status
-                      </th>
-                      <th className="px-3 sm:px-6 py-3 text-left text-xs font-bold text-white uppercase tracking-wider">
-                        Actions
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
-                    {leaveData.map((leave) => (
-                      <tr key={leave.id} className="hover:bg-gray-50">
-                        <td className="px-3 sm:px-6 py-4 whitespace-nowrap">
-                          <span className="text-gray-900 font-medium">{leave.employeeName}</span>
-                        </td>
-                        <td className="px-3 sm:px-6 py-4 whitespace-nowrap">
-                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${getLeaveTypeColor(leave.leaveType)}`}>
-                            {leave.leaveType}
-                          </span>
-                        </td>
-                        <td className="px-3 sm:px-6 py-4 whitespace-nowrap">
-                          <span className="text-gray-600">{leave.fromDate}</span>
-                        </td>
-                        <td className="px-3 sm:px-6 py-4 whitespace-nowrap">
-                          <span className="text-gray-600">{leave.toDate}</span>
-                        </td>
-                        <td className="px-3 sm:px-6 py-4 whitespace-nowrap">
-                          <span className="text-gray-600 font-medium">{leave.days}</span>
-                        </td>
-                        <td className="px-3 sm:px-6 py-4 whitespace-nowrap max-w-xs">
-                          <span className="text-gray-600 truncate block">{leave.reason}</span>
-                        </td>
-                        <td className="px-3 sm:px-6 py-4 whitespace-nowrap">
-                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(leave.status)}`}>
-                            {leave.status}
-                          </span>
-                        </td>
-                        <td className="px-3 sm:px-6 py-4 whitespace-nowrap">
-                          {leave.status === 'Pending' && (
-                            <div className="flex space-x-2">
-                              <button 
-                                onClick={() => handleStatusChange(leave.id, 'Rejected')}
-                                className="bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded text-xs transition-colors"
-                              >
-                                Reject
-                              </button>
-                            </div>
-                          )}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
+            {error && <ErrorAlert message={error} onClose={() => setError(null)} />}
+
+            <LeaveFilters
+              showFilters={showFilters}
+              filterStatus={filterStatus}
+              setFilterStatus={setFilterStatus}
+              filterDateRange={filterDateRange}
+              setFilterDateRange={setFilterDateRange}
+              stats={getSummaryStats()}
+            />
+
+            <SummaryStats stats={getSummaryStats()} />
+
+            <LeaveTable
+              filteredData={filteredData}
+              handleViewDetails={handleViewDetails}
+              handleStatusChange={handleStatusChange}
+            />
+
+            <LeaveDetailsModal
+              showDetailModal={showDetailModal}
+              setShowDetailModal={setShowDetailModal}
+              selectedLeave={selectedLeave}
+              handleStatusChange={handleStatusChange}
+            />
+
+            <ToastContainer
+              position="top-right"
+              autoClose={3000}
+              hideProgressBar={false}
+              newestOnTop
+              closeOnClick
+              rtl={false}
+              pauseOnFocusLoss
+              draggable
+              pauseOnHover
+              theme="light"
+            />
           </div>
         </main>
       </div>

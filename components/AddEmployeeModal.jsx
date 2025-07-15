@@ -12,9 +12,9 @@ const AddEmployeeModal = ({ onClose, onAdd }) => {
     aadhaar_no: "",
     username: "",
     password: "",
-    profile_picture: "",
     is_active: 1,
   })
+  const [profilePictureFile, setProfilePictureFile] = useState(null)
   const [previewImage, setPreviewImage] = useState(null)
 
   // Debug log to verify onAdd prop
@@ -32,11 +32,10 @@ const AddEmployeeModal = ({ onClose, onAdd }) => {
         return
       }
 
+      setProfilePictureFile(file)
       const reader = new FileReader()
       reader.onloadend = () => {
-        const result = reader.result
-        setFormData({ ...formData, profile_picture: result })
-        setPreviewImage(result)
+        setPreviewImage(reader.result)
       }
       reader.readAsDataURL(file)
     }
@@ -54,8 +53,8 @@ const AddEmployeeModal = ({ onClose, onAdd }) => {
       console.error("AddEmployeeModal: onAdd is undefined")
       return
     }
-    console.log("AddEmployeeModal: Submitting formData:", formData) // Debug log
-    onAdd(formData)
+    console.log("AddEmployeeModal: Submitting formData:", { ...formData, profilePictureFile }) // Debug log
+    onAdd({ ...formData, profilePictureFile })
   }
 
   const handleChange = (e) => {
@@ -74,9 +73,9 @@ const AddEmployeeModal = ({ onClose, onAdd }) => {
       aadhaar_no: "",
       username: "",
       password: "",
-      profile_picture: "",
       is_active: 1,
     })
+    setProfilePictureFile(null)
     setPreviewImage(null)
     onClose()
   }
@@ -99,7 +98,7 @@ const AddEmployeeModal = ({ onClose, onAdd }) => {
                 <div className="relative mx-auto sm:mx-0">
                   {previewImage ? (
                     <img
-                      src={previewImage || "/placeholder.svg"}
+                      src={previewImage}
                       alt="Profile Preview"
                       className="w-16 h-16 object-cover rounded-full border-2 border-gray-200"
                     />
