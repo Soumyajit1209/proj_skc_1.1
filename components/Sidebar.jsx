@@ -18,8 +18,11 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
     { icon: FileText, label: 'Master', hasSubmenu: true, subItems: [{ label: 'Employee', path: '/employee' }] },
     { icon: FileText, label: 'Attendance Report', hasSubmenu: false, path: '/attendance' },
     { icon: FileText, label: 'Leave Report', hasSubmenu: false, path: '/leave' },
+    {icon: FileText, label: 'Activity Report', hasSubmenu: false, path:  '/activity-report' },
     { icon: Key, label: 'Change Password', hasSubmenu: false, path: '/change-password' },
     { icon: LogOut, label: 'Logout', hasSubmenu: false, action: 'logout' }
+
+    
   ];
 
   const toggleSubmenu = (itemLabel) => {

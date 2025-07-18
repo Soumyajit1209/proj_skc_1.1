@@ -13,7 +13,7 @@ import LeaveFilters from '@/components/LeaveFilters';
 import SummaryStats from '@/components/SummaryStats';
 import LeaveTable from '@/components/LeaveTable';
 import LeaveDetailsModal from '@/components/LeaveDetailsModal';
-import { Download , X , Filter} from 'lucide-react';
+import { Download, X, Filter } from 'lucide-react';
 
 const LeaveReport = () => {
   const { user, logout, isAuthenticated } = useAuth();
@@ -198,16 +198,29 @@ const LeaveReport = () => {
         return;
       }
 
+      const contentType = response.headers['content-type'];
+      if (!contentType.includes('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet') &&
+          !contentType.includes('application/vnd.ms-excel')) {
+        const text = await response.data.text();
+        try {
+          const errorData = JSON.parse(text);
+          throw new Error(errorData.error || 'Invalid response format from server');
+        } catch {
+          throw new Error('Server returned an invalid Excel file');
+        }
+      }
+
       const url = window.URL.createObjectURL(new Blob([response.data]));
       const link = document.createElement('a');
       link.href = url;
-      link.setAttribute('download', 'leave_report.pdf');
+      link.setAttribute('download', 'leave_report.xlsx');
       document.body.appendChild(link);
       link.click();
       link.remove();
-      toast.success('Report downloaded successfully', { toastId: 'download-report-success' });
+      window.URL.revokeObjectURL(url);
+      toast.success('Excel report downloaded successfully', { toastId: 'download-report-success' });
     } catch (err) {
-      const errorMessage = err.response?.data?.error || err.message || 'Failed to download report';
+      const errorMessage = err.message || 'Failed to download report';
       toast.error(errorMessage, { toastId: 'download-report-error' });
     }
   };
@@ -250,12 +263,12 @@ const LeaveReport = () => {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col lg:flex-row">
+    <div className="min-h-screen bg-slate-50 flex flex-col lg:flex-row sm:overflow-auto">
       <Sidebar isOpen={sidebarOpen} toggleSidebar={toggleSidebar} />
       <div className="flex-1 flex flex-col min-w-0">
         <Header toggleSidebar={toggleSidebar} />
         <main className="flex-1 p-3 sm:p-4 lg:p-6">
-          <div className="max-w-7xl mx-auto">
+          <div className="max-w-7xl mx-auto flex flex-col">
             <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-4 sm:mb-6">
               <div>
                 <h1 className="text-xl sm:text-2xl font-semibold text-gray-900">Leave Management</h1>
@@ -274,7 +287,7 @@ const LeaveReport = () => {
                   className="bg-green-600 hover:bg-green-700 text-white px-3 sm:px-4 py-2 rounded-lg flex items-center space-x-2 transition-colors text-sm sm:text-base"
                 >
                   <Download className="h-4 w-4 sm:h-5 sm:w-5" />
-                  <span>Export</span>
+                  <span>Export Excel</span>
                 </button>
               </div>
             </div>
@@ -292,11 +305,13 @@ const LeaveReport = () => {
 
             <SummaryStats stats={getSummaryStats()} />
 
-            <LeaveTable
-              filteredData={filteredData}
-              handleViewDetails={handleViewDetails}
-              handleStatusChange={handleStatusChange}
-            />
+            <div className="flex-1">
+              <LeaveTable
+                filteredData={filteredData}
+                handleViewDetails={handleViewDetails}
+                handleStatusChange={handleStatusChange}
+              />
+            </div>
 
             <LeaveDetailsModal
               showDetailModal={showDetailModal}
