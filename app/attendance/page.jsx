@@ -1,11 +1,10 @@
 "use client";
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect , useRef } from 'react';
 import axios from 'axios';
 import { useAuth } from '../../contexts/AuthContext';
 import { useRouter } from 'next/navigation';
 import { ToastContainer, toast } from 'react-toastify';
-import 'react-toastify/dist/ReactToastify.css';
-import { Calendar, Download } from 'lucide-react';
+import { Calendar, Download, User, Printer } from 'lucide-react';
 import Header from '@/components/Header';
 import Sidebar from '@/components/Sidebar';
 import ErrorAlert from '@/components/ui/ErrorAlert';
@@ -14,22 +13,218 @@ import AttendanceTable from '@/components/AttendanceTable';
 import ViewModal from '@/components/ViewModal';
 import RejectModal from '@/components/RejectModal';
 import DateRangeModal from '@/components/DateRangeModal';
-import {X} from 'lucide-react';
+import { X } from 'lucide-react';
+
+const EmployeeAttendanceModal = ({ onClose, onSubmit, employees, onBackdropClick }) => {
+  const [filterText, setFilterText] = useState('');
+  const [selectedEmployee, setSelectedEmployee] = useState(null);
+  const [dateRange, setDateRange] = useState({ from: '', to: '' });
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const dropdownRef = useRef(null);
+
+  // Filter employees based on input
+  const filteredEmployees = employees.filter(
+    (employee) =>
+      employee.full_name.toLowerCase().includes(filterText.toLowerCase()) ||
+      employee.emp_id.toString().includes(filterText)
+  );
+
+  // Handle clicks outside the dropdown to close it
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setIsDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // Handle employee selection
+  const handleEmployeeSelect = (employee) => {
+    setSelectedEmployee(employee);
+    setFilterText(`${employee.full_name} (ID: ${employee.emp_id})`);
+    setIsDropdownOpen(false);
+  };
+
+  // Handle form submission
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (!selectedEmployee || !dateRange.from || !dateRange.to) {
+      toast.error('Please select an employee and date range', { toastId: 'employee-modal-error' });
+      return;
+    }
+    onSubmit(selectedEmployee.emp_id, dateRange);
+  };
+
+  return (
+    <div
+      className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50"
+      onClick={onBackdropClick}
+    >
+      <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-md">
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-xl font-semibold text-gray-800">Select Employee & Date Range</h2>
+          <button onClick={onClose} className="text-gray-600 hover:text-gray-800">
+            <X size={24} />
+          </button>
+        </div>
+        <form onSubmit={handleSubmit}>
+          <div className="mb-4 relative" ref={dropdownRef}>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Employee</label>
+            <input
+              type="text"
+              placeholder="Type name or ID..."
+              value={filterText}
+              onChange={(e) => {
+                setFilterText(e.target.value);
+                setSelectedEmployee(null);
+                setIsDropdownOpen(true);
+              }}
+              onFocus={() => setIsDropdownOpen(true)}
+              className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+            />
+            {isDropdownOpen && (
+              <div className="absolute z-10 w-full mt-1 bg-white border rounded-lg shadow-lg max-h-40 overflow-y-auto">
+                {filteredEmployees.length > 0 ? (
+                  filteredEmployees.map((employee) => (
+                    <div
+                      key={employee.emp_id}
+                      onClick={() => handleEmployeeSelect(employee)}
+                      className="px-4 py-2 cursor-pointer hover:bg-gray-100 text-sm"
+                    >
+                      {employee.full_name} (ID: {employee.emp_id})
+                    </div>
+                  ))
+                ) : (
+                  <div className="px-4 py-2 text-sm text-gray-600">
+                    {filterText.trim() ? 'No employees found matching your input.' : 'Start typing to filter employees.'}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+          <div className="mb-4">
+            <label className="block text-sm font-medium text-gray-700 mb-1">From Date</label>
+            <input
+              type="date"
+              value={dateRange.from}
+              onChange={(e) => setDateRange({ ...dateRange, from: e.target.value })}
+              className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+          <div className="mb-4">
+            <label className="block text-sm font-medium text-gray-700 mb-1">To Date</label>
+            <input
+              type="date"
+              value={dateRange.to}
+              onChange={(e) => setDateRange({ ...dateRange, to: e.target.value })}
+              className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+          <div className="flex justify-end gap-2">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-2 bg-gray-300 rounded-lg hover:bg-gray-400"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
+            >
+              Submit
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+};
+
+const EmployeeAttendanceReportModal = ({ data, onClose, onBackdropClick, calculateWorkingHours }) => {
+  const handlePrint = () => {
+    window.print();
+  };
+
+  return (
+    <div 
+      className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50"
+      onClick={onBackdropClick}
+    >
+      <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-4xl max-h-[80vh] overflow-y-auto">
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-xl font-semibold text-gray-800">Employee Attendance Report</h2>
+          <div className="flex gap-2">
+            <button
+              onClick={handlePrint}
+              className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center space-x-2 text-sm"
+            >
+              <Printer size={16} />
+              <span>Print</span>
+            </button>
+            <button onClick={onClose} className="text-gray-600 hover:text-gray-800">
+              <X size={24} />
+            </button>
+          </div>
+        </div>
+        <div className="mb-4">
+          <h3 className="text-lg font-medium text-gray-700">Employee: {data.employee.full_name} (ID: {data.employee.emp_id})</h3>
+          <p className="text-sm text-gray-600">Total Days: {data.summary.totalDays}</p>
+          <p className="text-sm text-green-600">Present: {data.summary.presentDays}</p>
+          <p className="text-sm text-red-600">Absent: {data.summary.absentDays}</p>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-blue-400">
+              <tr>
+                {['Date', 'Check In', 'Check Out', 'Working Hours', 'Status'].map((header) => (
+                  <th key={header} className="px-4 py-2 text-left text-xs font-bold text-white uppercase tracking-wider">
+                    {header}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {data.attendance.map((record) => (
+                <tr key={record.attendance_id} className="hover:bg-gray-50">
+                  <td className="px-4 py-3 text-sm text-gray-600">{record.attendance_date}</td>
+                  <td className="px-4 py-3 text-sm text-gray-600">{record.in_time || '-'}</td>
+                  <td className="px-4 py-3 text-sm text-gray-600">{record.out_time || '-'}</td>
+                  <td className="px-4 py-3 text-sm text-gray-600">{calculateWorkingHours(record.in_time, record.out_time)}</td>
+                  <td className="px-4 py-3">
+                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${data.getStatusColor(record.in_status)}`}>
+                      {record.in_status}
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 const AttendanceReport = () => {
   const { user, logout, isAuthenticated } = useAuth();
   const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [attendanceData, setAttendanceData] = useState([]);
-  // Note: attendanceData should include a profile_picture field (URL to employee's image)
+  const [employees, setEmployees] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [viewModal, setViewModal] = useState(false);
   const [rejectModal, setRejectModal] = useState(false);
+  const [employeeModal, setEmployeeModal] = useState(false);
+  const [reportModal, setReportModal] = useState(false);
   const [selectedRecord, setSelectedRecord] = useState(null);
   const [rejectRemarks, setRejectRemarks] = useState('');
   const [dateRange, setDateRange] = useState({ from: '', to: '' });
   const [showDateRangeModal, setShowDateRangeModal] = useState(false);
+  const [employeeReport, setEmployeeReport] = useState(null);
 
   const API_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://192.168.0.111:3001';
 
@@ -45,6 +240,7 @@ const AttendanceReport = () => {
   useEffect(() => {
     if (isAuthenticated && user?.role === 'admin') {
       fetchDailyAttendance();
+      fetchEmployees();
     }
   }, [isAuthenticated, user]);
 
@@ -79,6 +275,53 @@ const AttendanceReport = () => {
       }
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchEmployees = async () => {
+    try {
+      const response = await axios.get(`${API_BASE_URL}/api/admin/all-employees`, {
+        headers: { Authorization: `Bearer ${user.token}`, 'Content-Type': 'application/json' }
+      });
+      if (response.status === 401) {
+        toast.error('Session expired. Please login again.', { toastId: 'session-expired-employees' });
+        logout();
+        router.push('/login');
+        return;
+      }
+      setEmployees(response.data);
+    } catch (error) {
+      const errorMessage = error.response?.data?.error || error.message || 'Failed to fetch employees';
+      toast.error(errorMessage, { toastId: 'fetch-employees-error' });
+    }
+  };
+
+  const fetchEmployeeAttendanceReport = async (emp_id, dateRange) => {
+    try {
+      const response = await axios.get(`${API_BASE_URL}/api/admin/attendance/employee/${emp_id}`, {
+        params: { from_date: dateRange.from, to_date: dateRange.to },
+        headers: { Authorization: `Bearer ${user.token}`, 'Content-Type': 'application/json' }
+      });
+      if (response.status === 401) {
+        toast.error('Session expired. Please login again.', { toastId: 'session-expired-report' });
+        logout();
+        router.push('/login');
+        return;
+      }
+      setEmployeeReport({
+        ...response.data,
+        getStatusColor
+      });
+      setReportModal(true);
+      setEmployeeModal(false);
+    } catch (error) {
+      const errorMessage = error.response?.data?.error || error.message || 'Failed to fetch employee attendance report';
+      toast.error(errorMessage, { toastId: 'fetch-report-error' });
+      if (error.response?.status === 401) {
+        toast.error('Session expired. Please login again.', { toastId: 'session-expired-report-error' });
+        logout();
+        router.push('/login');
+      }
     }
   };
 
@@ -257,12 +500,19 @@ const AttendanceReport = () => {
     setViewModal(false);
     setRejectModal(false);
     setShowDateRangeModal(false);
+    setEmployeeModal(false);
+    setReportModal(false);
     setSelectedRecord(null);
     setRejectRemarks('');
+    setEmployeeReport(null);
   };
 
   const handleModalBackdropClick = (e) => {
     if (e.target === e.currentTarget) closeModal();
+  };
+
+  const handleCheckEmployeeAttendance = () => {
+    setEmployeeModal(true);
   };
 
   const presentCount = attendanceData.filter((r) => r.in_time).length;
@@ -297,7 +547,7 @@ const AttendanceReport = () => {
   return (
     <div className="min-h-screen bg-gray-100 flex flex-col lg:flex-row">
       <Sidebar isOpen={sidebarOpen} toggleSidebar={toggleSidebar} />
-      <div className={`flex-1 flex flex-col min-h-screen ${viewModal || rejectModal || showDateRangeModal ? 'blur-sm' : ''}`}>
+      <div className={`flex-1 flex flex-col min-h-screen ${viewModal || rejectModal || showDateRangeModal || employeeModal || reportModal ? 'blur-sm' : ''}`}>
         <Header toggleSidebar={toggleSidebar} />
         <main className="flex-1 p-4">
           <div className="max-w-7xl mx-auto">
@@ -333,6 +583,7 @@ const AttendanceReport = () => {
               data={attendanceData}
               onView={(record) => { setSelectedRecord(record); setViewModal(true); }}
               onReject={(record) => { setSelectedRecord(record); setRejectModal(true); }}
+              onCheckEmployeeAttendance={handleCheckEmployeeAttendance}
               getStatusColor={getStatusColor}
               calculateWorkingHours={calculateWorkingHours}
             />
@@ -365,6 +616,22 @@ const AttendanceReport = () => {
           onDownload={handleDownloadByRange}
           onClose={closeModal}
           onBackdropClick={handleModalBackdropClick}
+        />
+      )}
+      {employeeModal && (
+        <EmployeeAttendanceModal
+          employees={employees}
+          onSubmit={fetchEmployeeAttendanceReport}
+          onClose={closeModal}
+          onBackdropClick={handleModalBackdropClick}
+        />
+      )}
+      {reportModal && employeeReport && (
+        <EmployeeAttendanceReportModal
+          data={employeeReport}
+          onClose={closeModal}
+          onBackdropClick={handleModalBackdropClick}
+          calculateWorkingHours={calculateWorkingHours}
         />
       )}
       <ToastContainer

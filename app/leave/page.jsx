@@ -174,56 +174,102 @@ const LeaveReport = () => {
     }
   };
 
-  const handleDownloadReport = async () => {
-    if (!isAuthenticated || user?.role !== 'admin') {
-      toast.error('Access denied. Admin role required.', { toastId: 'auth-error-download' });
+const handleDownloadReport = async () => {
+  if (!isAuthenticated || user?.role !== 'admin') {
+    toast.error('Access denied. Admin role required.', { toastId: 'auth-error-download' });
+    logout();
+    router.push('/login');
+    return;
+  }
+
+  try {
+    // Build query parameters based on current filters
+    const queryParams = new URLSearchParams();
+    
+    // Add status filter if not 'ALL'
+    if (filterStatus && filterStatus !== 'ALL') {
+      queryParams.append('status', filterStatus);
+    }
+    
+    // Add date range filters if provided
+    if (filterDateRange.from) {
+      queryParams.append('fromDate', filterDateRange.from);
+    }
+    
+    if (filterDateRange.to) {
+      queryParams.append('toDate', filterDateRange.to);
+    }
+
+    // Construct the URL with query parameters
+    const url = `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/admin/leaves/download${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
+
+    const response = await axios.get(url, {
+      headers: {
+        Authorization: `Bearer ${user.token}`,
+        'Content-Type': 'application/json',
+      },
+      responseType: 'blob',
+    });
+
+    if (response.status === 401) {
+      toast.error('Session expired. Please login again.', { toastId: 'session-expired-download' });
       logout();
       router.push('/login');
       return;
     }
 
-    try {
-      const response = await axios.get(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/admin/leaves/download`, {
-        headers: {
-          Authorization: `Bearer ${user.token}`,
-          'Content-Type': 'application/json',
-        },
-        responseType: 'blob',
-      });
-
-      if (response.status === 401) {
-        toast.error('Session expired. Please login again.', { toastId: 'session-expired-download' });
-        logout();
-        router.push('/login');
-        return;
+    const contentType = response.headers['content-type'];
+    if (!contentType.includes('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet') &&
+        !contentType.includes('application/vnd.ms-excel')) {
+      const text = await response.data.text();
+      try {
+        const errorData = JSON.parse(text);
+        throw new Error(errorData.error || 'Invalid response format from server');
+      } catch {
+        throw new Error('Server returned an invalid Excel file');
       }
-
-      const contentType = response.headers['content-type'];
-      if (!contentType.includes('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet') &&
-          !contentType.includes('application/vnd.ms-excel')) {
-        const text = await response.data.text();
-        try {
-          const errorData = JSON.parse(text);
-          throw new Error(errorData.error || 'Invalid response format from server');
-        } catch {
-          throw new Error('Server returned an invalid Excel file');
-        }
-      }
-
-      const url = window.URL.createObjectURL(new Blob([response.data]));
-      const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', 'leave_report.xlsx');
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      window.URL.revokeObjectURL(url);
-      toast.success('Excel report downloaded successfully', { toastId: 'download-report-success' });
-    } catch (err) {
-      const errorMessage = err.message || 'Failed to download report';
-      toast.error(errorMessage, { toastId: 'download-report-error' });
     }
-  };
+
+    // Generate filename with filter information
+    let filename = 'leave_report';
+    
+    if (filterStatus && filterStatus !== 'ALL') {
+      filename += `_${filterStatus.toLowerCase()}`;
+    }
+    
+    if (filterDateRange.from || filterDateRange.to) {
+      filename += '_filtered';
+      if (filterDateRange.from) {
+        filename += `_from_${filterDateRange.from}`;
+      }
+      if (filterDateRange.to) {
+        filename += `_to_${filterDateRange.to}`;
+      }
+    }
+    
+    filename += '.xlsx';
+
+    const url_blob = window.URL.createObjectURL(new Blob([response.data]));
+    const link = document.createElement('a');
+    link.href = url_blob;
+    link.setAttribute('download', filename);
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.URL.revokeObjectURL(url_blob);
+    
+    // Show success message with filter information
+    let successMessage = 'Excel report downloaded successfully';
+    if (filterStatus !== 'ALL' || filterDateRange.from || filterDateRange.to) {
+      successMessage += ' (filtered data)';
+    }
+    
+    toast.success(successMessage, { toastId: 'download-report-success' });
+  } catch (err) {
+    const errorMessage = err.message || 'Failed to download report';
+    toast.error(errorMessage, { toastId: 'download-report-error' });
+  }
+};
 
   const getSummaryStats = () => {
     if (!filteredData || !Array.isArray(filteredData)) {
