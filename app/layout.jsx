@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata = {
-  title: "Sadana - Employee Management System",
+  title: "Sadana- Dashboard",
   description: "A comprehensive solution for managing employee data, attendance, and leave applications.",
   icons: {
     icon : '/logo.png'
