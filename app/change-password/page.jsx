@@ -1,10 +1,17 @@
-"use client"
+"use client";
 import React, { useState } from 'react';
 import Header from '@/components/Header';
 import Sidebar from '@/components/Sidebar';
-import { Eye, EyeOff, Lock, Shield } from 'lucide-react';
+import { Eye, EyeOff, Lock, Shield, X } from 'lucide-react';
+import { useAuth } from '../../contexts/AuthContext';
+import { useRouter } from 'next/navigation';
+import axios from 'axios';
+import { ToastContainer, toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 const ChangePassword = () => {
+  const { user, isAuthenticated, logout } = useAuth();
+  const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [formData, setFormData] = useState({
     currentPassword: '',
@@ -55,8 +62,8 @@ const ChangePassword = () => {
 
     if (!formData.newPassword) {
       newErrors.newPassword = 'New password is required';
-    } else if (formData.newPassword.length < 8) {
-      newErrors.newPassword = 'Password must be at least 8 characters long';
+    } else if (formData.newPassword.length < 4) {
+      newErrors.newPassword = 'Password must be at least 4 characters long';
     }
 
     if (!formData.confirmPassword) {
@@ -76,14 +83,39 @@ const ChangePassword = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     
+    if (!isAuthenticated) {
+      toast.error('Please login to change password', { toastId: 'auth-error' });
+      logout();
+      router.push('/login');
+      return;
+    }
+
     if (!validateForm()) return;
 
     setIsSubmitting(true);
     
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
+      const response = await axios.post(
+        `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/change-password`,
+        {
+          oldPassword: formData.currentPassword,
+          newPassword: formData.newPassword
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${user.token}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+
+      if (response.status === 401) {
+        toast.error('Session expired. Please login again.', { toastId: 'session-expired' });
+        logout();
+        router.push('/login');
+        return;
+      }
+
       // Reset form on success
       setFormData({
         currentPassword: '',
@@ -91,14 +123,44 @@ const ChangePassword = () => {
         confirmPassword: ''
       });
       
-      alert('Password changed successfully!');
-    } catch (error) {
-      console.error('Error changing password:', error);
-      alert('Failed to change password. Please try again.');
+      toast.success('Password changed successfully! Redirecting to login...', { toastId: 'change-password-success' });
+      
+      // Log out and redirect to login page after a short delay to show toast
+      setTimeout(() => {
+        logout();
+        router.push('/login');
+      }, 2000);
+    } catch (err) {
+      const errorMessage = err.response?.data?.error || err.message || 'Failed to change password';
+      if (err.response?.status === 401) {
+        toast.error('Session expired. Please login again.', { toastId: 'session-expired' });
+        logout();
+        router.push('/login');
+      } else {
+        toast.error(errorMessage, { toastId: 'change-password-error' });
+        setErrors(prev => ({
+          ...prev,
+          api: errorMessage
+        }));
+      }
     } finally {
       setIsSubmitting(false);
     }
   };
+
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
+        <div className="bg-white rounded-lg shadow-lg p-6 max-w-md w-full text-center">
+          <div className="w-12 h-12 mx-auto bg-red-100 rounded-full flex items-center justify-center mb-4">
+            <X className="w-6 h-6 text-red-600" />
+          </div>
+          <h2 className="text-xl font-semibold text-gray-800 mb-2">Access Denied</h2>
+          <p className="text-gray-600">Please login to access this page.</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-100 flex flex-col md:flex-row">
@@ -126,6 +188,10 @@ const ChangePassword = () => {
               </div>
 
               <form onSubmit={handleSubmit} className="space-y-6">
+                {errors.api && (
+                  <p className="text-sm text-red-600">{errors.api}</p>
+                )}
+
                 {/* Current Password */}
                 <div>
                   <label htmlFor="currentPassword" className="block text-sm font-medium text-gray-700 mb-2">
@@ -199,7 +265,7 @@ const ChangePassword = () => {
                     <p className="mt-1 text-sm text-red-600">{errors.newPassword}</p>
                   )}
                   <p className="mt-1 text-sm text-gray-500">
-                    Password must be at least 8 characters long
+                    Password must be at least 4 characters long
                   </p>
                 </div>
 
@@ -266,6 +332,19 @@ const ChangePassword = () => {
           </div>
         </main>
       </div>
+
+      <ToastContainer
+        position="top-right"
+        autoClose={3000}
+        hideProgressBar={false}
+        newestOnTop
+        closeOnClick
+        rtl={false}
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
+        theme="light"
+      />
     </div>
   );
 };
