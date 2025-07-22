@@ -113,7 +113,7 @@ const EmployeeManagement = () => {
       if (response.status === 401) {
         toast.error("Session expired. Please login again.", { toastId: "session-expired-update" })
         logout()
-        return
+        return 
       }
 
       setIsModalOpen(false)
