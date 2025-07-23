@@ -24,7 +24,7 @@ const Dashboard = () => {
     leaves: { pending: 0, approved: 0, rejected: 0, totalDays: 0 },
   });
 
-  const API_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://192.168.0.111:3001';
+  const API_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
 
   const toggleSidebar = () => setSidebarOpen(!sidebarOpen);
 
@@ -152,7 +152,7 @@ const Dashboard = () => {
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col lg:flex-row">
-      <Sidebar isOpen={sidebarOpen} toggleSidebar={toggleSidebar} />
+      {/* <Sidebar isOpen={sidebarOpen} toggleSidebar={toggleSidebar} /> */}
       <div className="flex-1 flex flex-col min-w-0">
         <Header toggleSidebar={toggleSidebar} />
         <main className="flex-1 p-3 sm:p-4 lg:p-6">

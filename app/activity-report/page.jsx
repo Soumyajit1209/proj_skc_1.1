@@ -469,9 +469,9 @@ const ActivityReport = () => {
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col lg:flex-row sm:overflow-auto">
-      <Sidebar isOpen={sidebarOpen} toggleSidebar={toggleSidebar} />
+      {/* <Sidebar isOpen={sidebarOpen} toggleSidebar={toggleSidebar} /> */}
       <div className="flex-1 flex flex-col min-w-0">
-        <Header toggleSidebar={toggleSidebar} />
+        {/* <Header toggleSidebar={toggleSidebar} /> */}
         <main className="flex-1 p-3 sm:p-4 lg:p-6">
           <div className="max-w-7xl mx-auto flex flex-col">
             <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-4 sm:mb-6">

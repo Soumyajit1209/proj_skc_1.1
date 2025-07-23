@@ -305,26 +305,11 @@ const EmployeeManagement = () => {
     )
   }
 
-  // Render access denied message if not admin
-  // if (!isAuthenticated || user?.role !== "admin") {
-  //   return (
-  //     <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
-  //       <div className="bg-white rounded-lg shadow-lg p-6 max-w-md w-full text-center">
-  //         <div className="w-12 h-12 mx-auto bg-red-100 rounded-full flex items-center justify-center mb-4">
-  //           <X className="w-6 h-6 text-red-600" />
-  //         </div>
-  //         <h2 className="text-xl font-semibold text-gray-800 mb-2">Access Denied</h2>
-  //         <p className="text-gray-600">Admin role required to access this page.</p>
-  //       </div>
-  //     </div>
-  //   )
-  // }
-
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col lg:flex-row">
-      <Sidebar isOpen={sidebarOpen} toggleSidebar={toggleSidebar} />
+      {/* <Sidebar isOpen={sidebarOpen} toggleSidebar={toggleSidebar} /> */}
       <div className="flex-1 flex flex-col min-w-0">
-        <Header toggleSidebar={toggleSidebar} />
+        {/* <Header toggleSidebar={toggleSidebar} /> */}
         <main className="flex-1 p-3 sm:p-4 lg:p-6">
           <div className="max-w-7xl mx-auto">
             <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-4 sm:mb-6">

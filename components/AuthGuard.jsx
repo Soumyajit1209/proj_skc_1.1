@@ -4,12 +4,18 @@ import { useAuth } from '../contexts/AuthContext';
 import { useRouter, usePathname } from 'next/navigation';
 import { useEffect } from 'react';
 import Sidebar from './Sidebar';
+import Header from './Header';
+import { useState } from 'react';
 
 const AuthGuard = ({ children }) => {
   const { user, loading } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
+  const toggleSidebar = () => setSidebarOpen(!sidebarOpen);
+
+  // Handle route protection - simplified to avoid loops
   useEffect(() => {
     if (!loading) {
       if (!user && pathname !== '/login') {
@@ -18,12 +24,21 @@ const AuthGuard = ({ children }) => {
         router.push('/');
       }
     }
-  }, [user, loading, router, pathname]);
+  }, [user, loading, pathname, router]);
 
+  // Show loading spinner while checking auth status
   if (loading) {
-    return null;
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-gray-100">
+        <div className="flex flex-col items-center space-y-4">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+          <p className="text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
   }
 
+  // Don't render anything while redirecting
   if (!user && pathname !== '/login') {
     return null;
   }
@@ -32,58 +47,30 @@ const AuthGuard = ({ children }) => {
     return null;
   }
 
-  return (
-    <div className="flex">
-      {user && pathname !== '/login' && !document.querySelector('.sidebar-container') && (
-        <Sidebar isOpen={true} toggleSidebar={() => {}} className="sidebar-container" />
+return (
+  <div className="flex flex-col md:flex-row min-h-screen">
+    {user && pathname !== '/login' && (
+      <>
+        <Sidebar
+          isOpen={sidebarOpen}
+          toggleSidebar={toggleSidebar}
+          className="md:block hidden" // hide sidebar on small screens
+        />
+      </>
+    )}
+
+    <div className="flex flex-col flex-1">
+      {user && pathname !== '/login' && (
+        <Header toggleSidebar={toggleSidebar} />
       )}
-      <main className={user && pathname !== '/login' ? 'flex-1' : 'w-full'}>
+      <main className="flex-1">
         {children}
       </main>
     </div>
-  );
+  </div>
+);
+
+
 };
 
 export default AuthGuard;
-
-
-// "use client"
-// import { useAuth } from '../contexts/AuthContext';
-// import { useRouter, usePathname } from 'next/navigation';
-// import { useEffect } from 'react';
-
-// const AuthGuard = ({ children }) => {
-//   const { user, loading } = useAuth();
-//   const router = useRouter();
-//   const pathname = usePathname();
-
-//   useEffect(() => {
-//     if (!loading) {
-//       if (!user && pathname !== '/login') {
-//         router.push('/login');
-//       } else if (user && pathname === '/login') {
-//         router.push('/');
-//       }
-//     }
-//   }, [user, loading, router, pathname]);
-
-//   // If loading, show nothing or a minimal loading indicator to avoid FOUC
-//   if (loading) {
-//     return null; // Prevent rendering children during loading
-//   }
-
-//   // If not authenticated and trying to access a protected route, return null (redirect handled by useEffect)
-//   if (!user && pathname !== '/login') {
-//     return null;
-//   }
-
-//   // If authenticated and on login page, return null (redirect handled by useEffect)
-//   if (user && pathname === '/login') {
-//     return null;
-//   }
-
-//   return children;
-// };
-
-// export default AuthGuard;
-

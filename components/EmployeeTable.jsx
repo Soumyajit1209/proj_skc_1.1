@@ -1,9 +1,11 @@
 import React, { useState, useMemo } from 'react';
-import { Eye, Trash2, User, Phone, Mail, MoreVertical, Search, X } from 'lucide-react';
+import { Eye, Trash2, User, Phone, Mail, MoreVertical, Search, X, ChevronLeft, ChevronRight } from 'lucide-react';
 
 const EmployeeTable = ({ employees, loading, onViewEmployee, onDeleteEmployee }) => {
   const [activeDropdown, setActiveDropdown] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const rowsPerPage = 10;
 
   const filteredEmployees = useMemo(() => {
     let result = employees;
@@ -24,6 +26,10 @@ const EmployeeTable = ({ employees, loading, onViewEmployee, onDeleteEmployee })
     );
   }, [employees, searchTerm]);
 
+  const totalPages = Math.ceil(filteredEmployees.length / rowsPerPage);
+  const startIndex = (currentPage - 1) * rowsPerPage;
+  const paginatedEmployees = filteredEmployees.slice(startIndex, startIndex + rowsPerPage);
+
   const toggleDropdown = (empId) => {
     setActiveDropdown(activeDropdown === empId ? null : empId);
   };
@@ -32,18 +38,24 @@ const EmployeeTable = ({ employees, loading, onViewEmployee, onDeleteEmployee })
     setSearchTerm('');
   };
 
+  const handlePageChange = (page) => {
+    if (page >= 1 && page <= totalPages) {
+      setCurrentPage(page);
+    }
+  };
+
   // Status Badge Component
   const StatusBadge = ({ is_active }) => {
     const isActive = is_active === 1;
     return (
-      <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-        isActive 
+      <span className={'inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ' +
+        (isActive 
           ? 'bg-green-100 text-green-800' 
-          : 'bg-red-100 text-red-800'
-      }`}>
-        <div className={`w-1.5 h-1.5 rounded-full mr-1 ${
-          isActive ? 'bg-green-500' : 'bg-red-500'
-        }`} />
+          : 'bg-red-100 text-red-800')
+      }>
+        <div className={'w-1.5 h-1.5 rounded-full mr-1 ' +
+          (isActive ? 'bg-green-500' : 'bg-red-500')
+        } />
         {isActive ? 'Active' : 'Inactive'}
       </span>
     );
@@ -57,7 +69,7 @@ const EmployeeTable = ({ employees, loading, onViewEmployee, onDeleteEmployee })
           <div className="flex-shrink-0">
             {employee.profile_picture ? (
               <img
-                src={`http://localhost:3001${employee.profile_picture}`}
+                src={process.env.NEXT_PUBLIC_BACKEND_URL + employee.profile_picture}
                 alt={employee.full_name}
                 className="w-10 h-10 rounded-full object-cover"
               />
@@ -171,11 +183,39 @@ const EmployeeTable = ({ employees, loading, onViewEmployee, onDeleteEmployee })
               </p>
             </div>
           ) : (
-            filteredEmployees.map((employee) => (
+            paginatedEmployees.map((employee) => (
               <EmployeeCard key={employee.emp_id} employee={employee} />
             ))
           )}
         </div>
+        {totalPages > 1 && (
+          <div className="px-3 py-2 border-t border-gray-200 flex items-center justify-between">
+            <div className="text-xs text-gray-600">
+              Showing {startIndex + 1} to {Math.min(startIndex + rowsPerPage, filteredEmployees.length)} of {filteredEmployees.length} entries
+            </div>
+            <div className="flex items-center space-x-2">
+              <button
+                onClick={() => handlePageChange(currentPage - 1)}
+                disabled={currentPage === 1}
+                className={'p-1 rounded-md ' + (currentPage === 1 ? 'text-gray-400 cursor-not-allowed' : 'text-blue-600 hover:bg-blue-50')}
+                title="Previous Page"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </button>
+              <span className="text-xs text-gray-600">
+                Page {currentPage} of {totalPages}
+              </span>
+              <button
+                onClick={() => handlePageChange(currentPage + 1)}
+                disabled={currentPage === totalPages}
+                className={'p-1 rounded-md ' + (currentPage === totalPages ? 'text-gray-400 cursor-not-allowed' : 'text-blue-600 hover:bg-blue-50')}
+                title="Next Page"
+              >
+                <ChevronRight className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="hidden sm:block overflow-x-auto">
@@ -219,19 +259,19 @@ const EmployeeTable = ({ employees, loading, onViewEmployee, onDeleteEmployee })
                 </td>
               </tr>
             ) : (
-              filteredEmployees.map((employee) => (
+              paginatedEmployees.map((employee) => (
                 <tr key={employee.emp_id} className="hover:bg-gray-50">
                   <td className="px-3 lg:px-4 py-2 whitespace-nowrap">
                     <div className="flex items-center">
-                      <div className="flex-shrink-0 w-8 h-8 mr-3-">
+                      <div className="flex-shrink-0 w-8 h-8 mr-3">
                         {employee.profile_picture ? (
                           <img
-                            src={`http://localhost:3001${employee.profile_picture}`}
+                            src={process.env.NEXT_PUBLIC_BACKEND_URL + employee.profile_picture}
                             alt={employee.full_name}
                             className="w-8 h-8 rounded-full object-cover"
                           />
                         ) : (
-                          <div className="w-8 h-8 bg-gray-200 wokół flex items-center justify-center">
+                          <div className="w-8 h-8 bg-gray-200 rounded flex items-center justify-center">
                             <User className="w-4 h-4 text-gray-500" />
                           </div>
                         )}
@@ -281,6 +321,34 @@ const EmployeeTable = ({ employees, loading, onViewEmployee, onDeleteEmployee })
             )}
           </tbody>
         </table>
+        {totalPages > 1 && (
+          <div className="px-3 py-2 border-t border-gray-200 flex items-center justify-between">
+            <div className="text-xs text-gray-600">
+              Showing {startIndex + 1} to {Math.min(startIndex + rowsPerPage, filteredEmployees.length)} of {filteredEmployees.length} entries
+            </div>
+            <div className="flex items-center space-x-2">
+              <button
+                onClick={() => handlePageChange(currentPage - 1)}
+                disabled={currentPage === 1}
+                className={'p-1 rounded-md ' + (currentPage === 1 ? 'text-gray-400 cursor-not-allowed' : 'text-blue-600 hover:bg-blue-50')}
+                title="Previous Page"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </button>
+              <span className="text-xs text-gray-600">
+                Page {currentPage} of {totalPages}
+              </span>
+              <button
+                onClick={() => handlePageChange(currentPage + 1)}
+                disabled={currentPage === totalPages}
+                className={'p-1 rounded-md ' + (currentPage === totalPages ? 'text-gray-400 cursor-not-allowed' : 'text-blue-600 hover:bg-blue-50')}
+                title="Next Page"
+              >
+                <ChevronRight className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

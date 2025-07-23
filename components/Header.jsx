@@ -2,8 +2,8 @@ import React from 'react'
 import { Bell, Home, Users, Shield, FileText, CreditCard, LogOut, Menu, X } from 'lucide-react';
 
 const Header = ({ toggleSidebar }) => (
-  <header className="bg-white shadow-sm border-b px-4 py-3 flex items-center justify-between">
-    <div className="flex items-center space-x-4">
+  <header className="bg-white shadow-sm border-b flex items-center justify-between">
+    <div className="flex items-center">
       <button
         onClick={toggleSidebar}
         className="lg:hidden p-2 rounded-md hover:bg-gray-100"

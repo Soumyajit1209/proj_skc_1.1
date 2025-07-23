@@ -27,10 +27,10 @@ export default function RootLayout({ children }) {
         className={`${geistSans.variable} ${geistMono.variable} antialiased bg-gray-100 min-h-screen`}
       >
         <AuthProvider>
-         
+         <AuthGuard>
            
         <div className="w-full min-h-screen flex flex-col">{children}</div>
-        
+        </AuthGuard>
         </AuthProvider>
       </body>
     </html>

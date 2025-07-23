@@ -106,7 +106,7 @@ const Login = () => {
       <div className="relative max-w-md w-full">
         {/* Header */}
         <div className="text-center mb-6">
-          <div className="mx-auto h-20 w-48 relative mb-3">
+          <div className="mx-auto h-16 w-40 sm:h-20 sm:w-48 lg:h-24 lg:w-56 relative mb-3">
             <Image
               src="/logo.png"
               alt="SADANA Logo"
@@ -125,6 +125,21 @@ const Login = () => {
 
         {/* Login Form */}
         <div className="bg-white/80 backdrop-blur-xl rounded-2xl shadow-xl border border-white/20 p-6">
+          <style jsx>{`
+            input:-webkit-autofill,
+            input:-webkit-autofill:hover,
+            input:-webkit-autofill:focus,
+            input:-webkit-autofill:active {
+              -webkit-box-shadow: 0 0 0 30px white inset !important;
+              -webkit-text-fill-color: #1e293b !important;
+              background-color: white !important;
+            }
+            input[type="password"]:-webkit-autofill {
+              -webkit-box-shadow: 0 0 0 30px white inset !important;
+              -webkit-text-fill-color: #1e293b !important;
+            }
+          `}</style>
+          
           <form onSubmit={handleSubmit} className="space-y-4">
             {errors.general && (
               <div className="bg-red-50/80 backdrop-blur-sm border border-red-200/50 rounded-xl p-4">
@@ -147,12 +162,17 @@ const Login = () => {
                   name="username"
                   value={formData.username}
                   onChange={handleInputChange}
-                  className={`block w-full pl-12 pr-4 py-3 bg-slate-50/50 border-2 rounded-xl focus:ring-0 focus:bg-white transition-all duration-200 placeholder:text-slate-400 ${
+                  autoComplete="username"
+                  className={`block w-full pl-12 pr-4 py-3 bg-white border-2 rounded-xl focus:ring-0 focus:bg-white transition-all duration-200 placeholder:text-slate-400 text-slate-800 font-medium ${
                     errors.username 
                       ? 'border-red-300 focus:border-red-500' 
                       : 'border-slate-200 focus:border-blue-500 hover:border-slate-300'
                   }`}
                   placeholder="Enter your username"
+                  style={{ 
+                    color: '#1e293b !important',
+                    backgroundColor: 'white !important'
+                  }}
                 />
               </div>
               {errors.username && (
@@ -175,12 +195,17 @@ const Login = () => {
                   name="password"
                   value={formData.password}
                   onChange={handleInputChange}
-                  className={`block w-full pl-12 pr-12 py-3 bg-slate-50/50 border-2 rounded-xl focus:ring-0 focus:bg-white transition-all duration-200 placeholder:text-slate-400 ${
+                  autoComplete="current-password"
+                  className={`block w-full pl-12 pr-12 py-3 bg-white border-2 rounded-xl focus:ring-0 focus:bg-white transition-all duration-200 placeholder:text-slate-400 text-slate-800 font-medium ${
                     errors.password 
                       ? 'border-red-300 focus:border-red-500' 
                       : 'border-slate-200 focus:border-blue-500 hover:border-slate-300'
                   }`}
                   placeholder="Enter your password"
+                  style={{ 
+                    color: '#1e293b !important',
+                    backgroundColor: 'white !important'
+                  }}
                 />
                 <button
                   type="button"
