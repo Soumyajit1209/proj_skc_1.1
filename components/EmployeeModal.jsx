@@ -11,9 +11,10 @@ const EmployeeModal = ({ employee, onClose, onUpdate }) => {
   });
   const [profilePictureFile, setProfilePictureFile] = useState(null);
   const [previewImage, setPreviewImage] = useState(
-    employee.profile_picture ? `http://localhost:3001${employee.profile_picture}` : null
+    employee.profile_picture ? `${process.env.NEXT_PUBLIC_BACKEND_URL}${employee.profile_picture}` : null
   );
   const [isEditing, setIsEditing] = useState(false);
+  const [showFullImage, setShowFullImage] = useState(false);
 
   // Add CSS to hide scrollbar for webkit browsers
   const hideScrollbarStyle = `
@@ -23,6 +24,12 @@ const EmployeeModal = ({ employee, onClose, onUpdate }) => {
     .hide-scrollbar {
       scrollbar-width: none;
       -ms-overflow-style: none;
+    }
+    .image-expand {
+      transition: all 0.3s ease-in-out;
+    }
+    .image-expand:hover {
+      transform: scale(1.05);
     }
   `
 
@@ -98,6 +105,14 @@ const EmployeeModal = ({ employee, onClose, onUpdate }) => {
     setIsEditing(false);
   };
 
+  const [isImageExpanded, setIsImageExpanded] = useState(false);
+
+  const handleImageClick = () => {
+    if (previewImage) {
+      setIsImageExpanded(!isImageExpanded);
+    }
+  };
+
   const renderField = (fieldName, label, type = "text", required = false, options = null) => {
     const value = formData[fieldName] !== undefined ? formData[fieldName] : "";
 
@@ -153,6 +168,8 @@ const EmployeeModal = ({ employee, onClose, onUpdate }) => {
   return (
     <>
       <style dangerouslySetInnerHTML={{ __html: hideScrollbarStyle }} />
+      
+      {/* Main Modal */}
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-2 sm:p-4 z-50">
         <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[95vh] sm:max-h-[90vh] overflow-y-auto mx-2 sm:mx-0 hide-scrollbar">
           {/* Header */}
@@ -182,13 +199,19 @@ const EmployeeModal = ({ employee, onClose, onUpdate }) => {
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2 sm:mb-3">Profile Picture</label>
                 
-                <div className="flex flex-col sm:flex-row sm:items-center space-y-3 sm:space-y-0 sm:space-x-4">
+                <div className="flex flex-col sm:flex-row sm:items-start space-y-3 sm:space-y-0 sm:space-x-4">
                   <div className="relative mx-auto sm:mx-0">
                     {previewImage ? (
                       <img
                         src={previewImage}
                         alt="Profile Preview"
-                        className="w-16 h-16 object-cover rounded-full border-2 border-gray-200"
+                        className={`object-cover border-2 border-gray-200 cursor-pointer hover:border-sky-400 transition-all duration-300 image-expand ${
+                          isImageExpanded 
+                            ? 'w-64 h-64 sm:w-80 sm:h-80 rounded-lg' 
+                            : 'w-16 h-16 rounded-full'
+                        }`}
+                        onClick={handleImageClick}
+                        title={isImageExpanded ? "Click to minimize" : "Click to expand"}
                       />
                     ) : (
                       <div className="w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center">
@@ -197,13 +220,21 @@ const EmployeeModal = ({ employee, onClose, onUpdate }) => {
                     )}
                   </div>
                   
-                  {isEditing && (
-                    <label className="cursor-pointer inline-flex items-center justify-center px-3 py-2 bg-sky-50 text-sky-700 rounded-md hover:bg-sky-100 transition-colors text-sm w-full sm:w-auto">
-                      <Upload className="w-4 h-4 mr-2" />
-                      Upload Photo
-                      <input type="file" accept="image/*" onChange={handleFileChange} className="hidden" />
-                    </label>
-                  )}
+                  <div className="flex-1">
+                    {isEditing && (
+                      <label className="cursor-pointer inline-flex items-center justify-center px-3 py-2 bg-sky-50 text-sky-700 rounded-md hover:bg-sky-100 transition-colors text-sm w-full sm:w-auto">
+                        <Upload className="w-4 h-4 mr-2" />
+                        Upload Photo
+                        <input type="file" accept="image/*" onChange={handleFileChange} className="hidden" />
+                      </label>
+                    )}
+                    
+                    {previewImage && (
+                      <p className="text-xs text-gray-500 mt-2 text-center sm:text-left">
+                        {isImageExpanded ? "Click to minimize" : "Click to expand image"}
+                      </p>
+                    )}
+                  </div>
                 </div>
               </div>
 
