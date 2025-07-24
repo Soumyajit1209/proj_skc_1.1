@@ -9,7 +9,7 @@ import { useAuth } from "../../contexts/AuthContext";
 import { useRouter } from 'next/navigation';
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
-import { Download, X, Filter, MapPin, Calendar, Clock, User, FileText, Printer } from 'lucide-react';
+import { Download, X, Filter, MapPin, Calendar, Clock, User, FileText, Printer , Trash2 } from 'lucide-react';
 
 // Activity Filters Component
 const ActivityFilters = ({ showFilters, filterDateRange, setFilterDateRange, stats }) => {
@@ -109,7 +109,7 @@ const SummaryStats = ({ stats, dateRange }) => {
 };
 
 // Activity Table Component
-const ActivityTable = ({ groupedData, searchTerm }) => {
+const ActivityTable = ({ groupedData, searchTerm, handleDelete }) => {
   const [expandedDates, setExpandedDates] = useState(new Set());
 
   const toggleDate = (date) => {
@@ -123,6 +123,9 @@ const ActivityTable = ({ groupedData, searchTerm }) => {
   };
 
   const formatDateTime = (datetime) => {
+    if (!datetime || isNaN(new Date(datetime))) {
+      return 'N/A';
+    }
     return new Date(datetime).toLocaleString('en-IN', {
       timeZone: 'Asia/Kolkata',
       year: 'numeric',
@@ -135,6 +138,9 @@ const ActivityTable = ({ groupedData, searchTerm }) => {
   };
 
   const formatDate = (date) => {
+    if (!date || isNaN(new Date(date))) {
+      return 'N/A';
+    }
     return new Date(date).toLocaleDateString('en-IN', {
       timeZone: 'Asia/Kolkata',
       weekday: 'long',
@@ -151,10 +157,10 @@ const ActivityTable = ({ groupedData, searchTerm }) => {
     }
     
     const filtered = activities.filter(activity =>
-      activity.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      activity.customer_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      activity.remarks?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      activity.location?.toLowerCase().includes(searchTerm.toLowerCase())
+      (activity.full_name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (activity.customer_name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (activity.remarks || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (activity.location || '').toLowerCase().includes(searchTerm.toLowerCase())
     );
     
     if (filtered.length > 0) {
@@ -163,6 +169,12 @@ const ActivityTable = ({ groupedData, searchTerm }) => {
     
     return acc;
   }, {});
+
+  const handleDeleteClick = (activityId) => {
+    if (window.confirm('Are you sure you want to delete this activity? This action cannot be undone.')) {
+      handleDelete(activityId);
+    }
+  };
 
   return (
     <div className="bg-white rounded-lg shadow-sm border overflow-hidden">
@@ -209,6 +221,7 @@ const ActivityTable = ({ groupedData, searchTerm }) => {
                             <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Customer</th>
                             <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Remarks</th>
                             <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Location</th>
+                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -217,7 +230,7 @@ const ActivityTable = ({ groupedData, searchTerm }) => {
                               <td className="px-4 py-3 text-sm">
                                 <div className="flex items-center space-x-2">
                                   <Clock className="h-4 w-4 text-gray-400" />
-                                  <span>{formatDateTime(activity.activity_datetime).split(', ')[1]}</span>
+                                  <span>{formatDateTime(activity.activity_datetime).split(', ')[1] || 'N/A'}</span>
                                 </div>
                               </td>
                               <td className="px-4 py-3 text-sm">
@@ -226,8 +239,8 @@ const ActivityTable = ({ groupedData, searchTerm }) => {
                                     <User className="w-4 h-4 text-blue-600" />
                                   </div>
                                   <div>
-                                    <p className="font-medium text-gray-900">{activity.full_name}</p>
-                                    <p className="text-xs text-gray-500">ID: {activity.emp_id}</p>
+                                    <p className="font-medium text-gray-900">{activity.full_name || 'Unknown'}</p>
+                                    <p className="text-xs text-gray-500">ID: {activity.emp_id || 'N/A'}</p>
                                   </div>
                                 </div>
                               </td>
@@ -257,6 +270,18 @@ const ActivityTable = ({ groupedData, searchTerm }) => {
                                 ) : (
                                   <span className="text-gray-500">Location not available</span>
                                 )}
+                              </td>
+                              <td className="px-4 py-3 text-sm whitespace-nowrap">
+                                <div className="flex items-center space-x-1">
+                                  <button
+                                    onClick={() => handleDeleteClick(activity.activity_id)}
+                                    className="inline-flex items-center px-1.5 sm:px-2 py-0.5 sm:py-1 text-xs font-medium rounded-md text-red-700 bg-red-50 border border-red-200 hover:bg-red-100 hover:border-red-300 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-1"
+                                    title="Delete"
+                                  >
+                                    <Trash2 className="h-3 w-3 sm:mr-1" />
+                                    <span className="hidden sm:inline">Delete</span>
+                                  </button>
+                                </div>
                               </td>
                             </tr>
                           ))}
@@ -344,6 +369,7 @@ const ActivityReport = () => {
   // Filter activities
   useEffect(() => {
     const filtered = activityData.filter(activity => {
+      if (!activity.activity_datetime) return false;
       const activityDate = new Date(activity.activity_datetime).toISOString().split('T')[0];
       
       if (filterDateRange.from && activityDate < filterDateRange.from) return false;
@@ -358,6 +384,7 @@ const ActivityReport = () => {
   // Group activities by date
   useEffect(() => {
     const grouped = filteredData.reduce((acc, activity) => {
+      if (!activity.activity_datetime) return acc;
       const date = new Date(activity.activity_datetime).toISOString().split('T')[0];
       if (!acc[date]) {
         acc[date] = [];
@@ -368,6 +395,41 @@ const ActivityReport = () => {
     
     setGroupedData(grouped);
   }, [filteredData]);
+
+  // Delete activity
+  const handleDelete = async (activityId) => {
+    if (!isAuthenticated || user?.role !== 'admin') {
+      toast.error('Access denied. Admin role required.', { toastId: 'auth-error-delete' });
+      logout();
+      router.push('/login');
+      return;
+    }
+
+    try {
+      const response = await axios.delete(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/admin/activity/${activityId}`, {
+        headers: {
+          Authorization: `Bearer ${user.token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (response.status === 401) {
+        toast.error('Session expired. Please login again.', { toastId: 'session-expired-delete' });
+        logout();
+        router.push('/login');
+        return;
+      }
+
+      // Update activityData and filteredData
+      const updatedActivityData = activityData.filter(activity => activity.activity_id !== activityId);
+      setActivityData(updatedActivityData);
+      setFilteredData(filteredData.filter(activity => activity.activity_id !== activityId));
+      toast.success('Activity deleted successfully', { toastId: 'delete-activity-success' });
+    } catch (err) {
+      const errorMessage = err.response?.data?.error || err.message || 'Failed to delete activity';
+      toast.error(errorMessage, { toastId: 'delete-activity-error' });
+    }
+  };
 
   // Print functionality
   const handlePrint = () => {
@@ -469,9 +531,7 @@ const ActivityReport = () => {
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col lg:flex-row sm:overflow-auto">
-      {/* <Sidebar isOpen={sidebarOpen} toggleSidebar={toggleSidebar} /> */}
       <div className="flex-1 flex flex-col min-w-0">
-        {/* <Header toggleSidebar={toggleSidebar} /> */}
         <main className="flex-1 p-3 sm:p-4 lg:p-6">
           <div className="max-w-7xl mx-auto flex flex-col">
             <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-4 sm:mb-6">
@@ -515,7 +575,6 @@ const ActivityReport = () => {
 
             <SummaryStats stats={getSummaryStats()} dateRange={filterDateRange} />
 
-            {/* Search Bar */}
             <div className="mb-6">
               <div className="relative">
                 <input
@@ -533,107 +592,110 @@ const ActivityReport = () => {
               <ActivityTable 
                 groupedData={groupedData}
                 searchTerm={searchTerm}
+                handleDelete={handleDelete}
               />
             </div>
 
-             {/* Hidden print content */}
-<div id="activity-print-content" className="hidden print:block">
-  <div className="p-6">
-    <div className="flex items-center justify-between mb-6">
-      <div className="flex items-center space-x-4">
-        <img 
-          src="/logo.png" 
-          alt="Company Logo" 
-          className="h-12 w-auto object-contain"
-          onError={(e) => { e.target.style.display = 'none'; }}
-        />
-        <div className="flex-4 text-center">
-          <h1 className="text-2xl font-bold text-gray-900">Activity Report</h1>
-          <p className="text-gray-600">Generated on {new Date().toLocaleDateString()}</p>
-          {(filterDateRange.from || filterDateRange.to) && (
-            <p className="text-gray-600">
-              Period: {filterDateRange.from || 'All'} to {filterDateRange.to || 'All'}
-            </p>
-          )}
-        </div>
-      </div>
-      <div className="text-right text-sm text-gray-600">
-        <p>Page 1</p>
-        <p>{new Date().toLocaleString()}</p>
-      </div>
-    </div>
-    
-    <div className="mb-6">
-      <div className="grid grid-cols-3 gap-4 text-center">
-        <div>
-          <p className="text-lg font-semibold">{getSummaryStats().totalActivities}</p>
-          <p className="text-sm text-gray-600">Total Activities</p>
-        </div>
-        <div>
-          <p className="text-lg font-semibold">{getSummaryStats().uniqueEmployees}</p>
-          <p className="text-sm text-gray-600">Active Employees</p>
-        </div>
-        <div>
-          <p className="text-lg font-semibold">{getSummaryStats().locationsTracked}</p>
-          <p className="text-sm text-gray-600">Locations Tracked</p>
-        </div>
-      </div>
-    </div>
+            <div id="activity-print-content" className="hidden print:block">
+              <div className="p-6">
+                <div className="flex items-center justify-between mb-6">
+                  <div className="flex items-center space-x-4">
+                    <img 
+                      src="/logo.png" 
+                      alt="Company Logo" 
+                      className="h-12 w-auto object-contain"
+                      onError={(e) => { e.target.style.display = 'none'; }}
+                    />
+                    <div className="flex-4 text-center">
+                      <h1 className="text-2xl font-bold text-gray-900">Activity Report</h1>
+                      <p className="text-gray-600">Generated on {new Date().toLocaleDateString()}</p>
+                      {(filterDateRange.from || filterDateRange.to) && (
+                        <p className="text-gray-600">
+                          Period: {filterDateRange.from || 'All'} to {filterDateRange.to || 'All'}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                  <div className="text-right text-sm text-gray-600">
+                    <p>Page 1</p>
+                    <p>{new Date().toLocaleString()}</p>
+                  </div>
+                </div>
+                
+                <div className="mb-6">
+                  <div className="grid grid-cols-3 gap-4 text-center">
+                    <div>
+                      <p className="text-lg font-semibold">{getSummaryStats().totalActivities}</p>
+                      <p className="text-sm text-gray-600">Total Activities</p>
+                    </div>
+                    <div>
+                      <p className="text-lg font-semibold">{getSummaryStats().uniqueEmployees}</p>
+                      <p className="text-sm text-gray-600">Active Employees</p>
+                    </div>
+                    <div>
+                      <p className="text-lg font-semibold">{getSummaryStats().locationsTracked}</p>
+                      <p className="text-sm text-gray-600">Locations Tracked</p>
+                    </div>
+                  </div>
+                </div>
 
-    {Object.entries(groupedData)
-      .sort(([a], [b]) => new Date(b) - new Date(a))
-      .map(([date, activities]) => (
-        <div key={date} className="mb-8">
-          <h3 className="text-lg font-semibold mb-4">
-            {new Date(date).toLocaleDateString('en-IN', {
-              weekday: 'long',
-              year: 'numeric',
-              month: 'long',
-              day: 'numeric'
-            })} ({activities.length} activities)
-          </h3>
-          <table className="w-full border-collapse border border-gray-300 text-sm">
-            <thead>
-              <tr className="bg-gray-100">
-                <th className="border border-gray-300 px-2 py-1 text-left">Time</th>
-                <th className="border border-gray-300 px-2 py-1 text-left">Employee</th>
-                <th className="border border-gray-300 px-2 py-1 text-left">Customer</th>
-                <th className="border border-gray-300 px-2 py-1 text-left">Remarks</th>
-                <th className="border border-gray-300 px-2 py-1 text-left">Location</th>
-              </tr>
-            </thead>
-            <tbody>
-              {activities.map((activity) => (
-                <tr key={activity.activity_id}>
-                  <td className="border border-gray-300 px-2 py-1">
-                    {new Date(activity.activity_datetime).toLocaleTimeString('en-IN', {
-                      hour: '2-digit',
-                      minute: '2-digit',
-                      hour12: true
-                    })}
-                  </td>
-                  <td className="border border-gray-300 px-2 py-1">
-                    {activity.full_name} (ID: {activity.emp_id})
-                  </td>
-                  <td className="border border-gray-300 px-2 py-1">
-                    {activity.customer_name || 'N/A'}
-                  </td>
-                  <td className="border border-gray-300 px-2 py-1">
-                    {activity.remarks || 'No remarks'}
-                  </td>
-                  <td className="border border-gray-300 px-2 py-1">
-                    {activity.location || 'Location not available'}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      ))
-    }
-  </div>
-</div>
-
+                {Object.entries(groupedData)
+                  .sort(([a], [b]) => new Date(b) - new Date(a))
+                  .map(([date, activities]) => (
+                    <div key={date} className="mb-8">
+                      <h3 className="text-lg font-semibold mb-4">
+                        {new Date(date).toLocaleDateString('en-IN', {
+                          weekday: 'long',
+                          year: 'numeric',
+                          month: 'long',
+                          day: 'numeric'
+                        })} ({activities.length} activities)
+                      </h3>
+                      <table className="w-full border-collapse border border-gray-300 text-sm">
+                        <thead>
+                          <tr className="bg-gray-100">
+                            <th className="border border-gray-300 px-2 py-1 text-left">Time</th>
+                            <th className="border border-gray-300 px-2 py-1 text-left">Employee</th>
+                            <th className="border border-gray-300 px-2 py-1 text-left">Customer</th>
+                            <th className="border border-gray-300 px-2 py-1 text-left">Remarks</th>
+                            <th className="border border-gray-300 px-2 py-1 text-left">Location</th>
+                            <th className="border border-gray-300 px-2 py-1 text-left">Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {activities.map((activity) => (
+                            <tr key={activity.activity_id}>
+                              <td className="border border-gray-300 px-2 py-1">
+                                {new Date(activity.activity_datetime).toLocaleTimeString('en-IN', {
+                                  hour: '2-digit',
+                                  minute: '2-digit',
+                                  hour12: true
+                                })}
+                              </td>
+                              <td className="border border-gray-300 px-2 py-1">
+                                {activity.full_name} (ID: {activity.emp_id})
+                              </td>
+                              <td className="border border-gray-300 px-2 py-1">
+                                {activity.customer_name || 'N/A'}
+                              </td>
+                              <td className="border border-gray-300 px-2 py-1">
+                                {activity.remarks || 'No remarks'}
+                              </td>
+                              <td className="border border-gray-300 px-2 py-1">
+                                {activity.location || 'Location not available'}
+                              </td>
+                              <td className="border border-gray-300 px-2 py-1">
+                                Deleted
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  ))
+                }
+              </div>
+            </div>
 
             <ToastContainer
               position="top-right"

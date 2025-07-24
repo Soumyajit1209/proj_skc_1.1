@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
-import { User, Eye, Check, X, Search, ChevronLeft, ChevronRight } from 'lucide-react';
+import { User, Eye, Check, X, Search, ChevronLeft, ChevronRight, Trash2 } from 'lucide-react';
 import { getStatusColor } from '@/utils/getStatusColor';
 import { getLeaveTypeColor } from '@/utils/getLeaveTypeColor';
 
-const LeaveTable = ({ filteredData, handleViewDetails, handleStatusChange }) => {
+const LeaveTable = ({ filteredData, handleViewDetails, handleStatusChange, handleDelete }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const rowsPerPage = 10;
@@ -15,6 +15,12 @@ const LeaveTable = ({ filteredData, handleViewDetails, handleStatusChange }) => 
       month: '2-digit',
       year: 'numeric'
     });
+  };
+
+  const handleDeleteClick = (leaveId) => {
+    if (window.confirm('Are you sure you want to delete this leave application? This action cannot be undone.')) {
+      handleDelete(leaveId);
+    }
   };
 
   const searchedData = filteredData.filter((leave) =>
@@ -131,6 +137,14 @@ const LeaveTable = ({ filteredData, handleViewDetails, handleStatusChange }) => 
                         </button>
                       </>
                     )}
+                    <button
+                      onClick={() => handleDeleteClick(leave.leave_id)}
+                      className="inline-flex items-center px-1.5 sm:px-2 py-0.5 sm:py-1 text-xs font-medium rounded-md text-red-700 bg-red-50 border border-red-200 hover:bg-red-100 hover:border-red-300 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-1"
+                      title="Delete"
+                    >
+                      <Trash2 className="h-3 w-3 sm:mr-1" />
+                      <span className="hidden sm:inline">Delete</span>
+                    </button>
                   </div>
                 </td>
               </tr>

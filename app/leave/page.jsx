@@ -94,6 +94,39 @@ const LeaveReport = () => {
     setFilteredData(filtered);
   }, [leaveData, filterStatus, filterDateRange]);
 
+  const handleDelete = async (leaveId) => {
+    if (!isAuthenticated || user?.role !== 'admin') {
+      toast.error('Access denied. Admin role required.', { toastId: 'auth-error-delete' });
+      logout();
+      router.push('/login');
+      return;
+    }
+
+    try {
+      const response = await axios.delete(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/admin/leaves/${leaveId}`, {
+        headers: {
+          Authorization: `Bearer ${user.token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (response.status === 401) {
+        toast.error('Session expired. Please login again.', { toastId: 'session-expired-delete' });
+        logout();
+        router.push('/login');
+        return;
+      }
+
+      // Update both leaveData and filteredData
+      setLeaveData(leaveData.filter(leave => leave.leave_id !== leaveId));
+      setFilteredData(filteredData.filter(leave => leave.leave_id !== leaveId));
+      toast.success('Leave application deleted successfully', { toastId: 'delete-leave-success' });
+    } catch (err) {
+      const errorMessage = err.response?.data?.error || err.message || 'Failed to delete leave application';
+      toast.error(errorMessage, { toastId: 'delete-leave-error' });
+    }
+  };
+
   const handleStatusChange = async (leaveId, newStatus) => {
     if (!isAuthenticated || user?.role !== 'admin') {
       toast.error('Access denied. Admin role required.', { toastId: 'auth-error-update' });
@@ -364,6 +397,7 @@ const handleDownloadReport = async () => {
               setShowDetailModal={setShowDetailModal}
               selectedLeave={selectedLeave}
               handleStatusChange={handleStatusChange}
+              handleDelete = {handleDelete}
             />
 
             <ToastContainer
