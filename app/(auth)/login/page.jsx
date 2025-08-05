@@ -107,13 +107,13 @@ const Login = () => {
         {/* Header */}
         <div className="text-center mb-6">
           <div className="mx-auto h-16 w-40 sm:h-20 sm:w-48 lg:h-24 lg:w-56 relative mb-3">
-            <Image
+            {/* <Image
               src="/logo.png"
               alt="SADANA Logo"
               fill
               className="object-contain drop-shadow-lg"
               priority
-            />
+            /> */}
           </div>
           <h1 className="text-3xl font-bold bg-gradient-to-r from-slate-800 to-slate-600 bg-clip-text text-transparent mb-1">
             Welcome Back
