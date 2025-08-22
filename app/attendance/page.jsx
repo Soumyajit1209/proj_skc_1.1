@@ -1,10 +1,10 @@
 "use client";
-import React, { useState, useEffect , useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import { useAuth } from '../../contexts/AuthContext';
 import { useRouter } from 'next/navigation';
 import { ToastContainer, toast } from 'react-toastify';
-import { Calendar, Download, User, Printer } from 'lucide-react';
+import { Calendar, Download, User, Printer, Clock, Filter } from 'lucide-react';
 import Header from '@/components/Header';
 import Sidebar from '@/components/Sidebar';
 import ErrorAlert from '@/components/ui/ErrorAlert';
@@ -208,23 +208,72 @@ const EmployeeAttendanceReportModal = ({ data, onClose, onBackdropClick, calcula
   );
 };
 
+const CloseModal = ({ record, remarks, setRemarks, onClose, onBackdropClick, onCloseAttendance }) => {
+  return (
+    <div
+      className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50"
+      onClick={onBackdropClick}
+    >
+      <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-md">
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-xl font-semibold text-gray-800">Close Attendance</h2>
+          <button onClick={onClose} className="text-gray-600 hover:text-gray-800">
+            <X size={24} />
+          </button>
+        </div>
+        <p className="mb-4 text-gray-600">
+          Are you sure you want to close this attendance for {record.full_name} on {record.attendance_date}?
+        </p>
+        <div className="mb-4">
+          <label className="block text-sm font-medium text-gray-700 mb-1">Remarks (optional)</label>
+          <textarea
+            value={remarks}
+            onChange={(e) => setRemarks(e.target.value)}
+            className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+            rows={3}
+          />
+        </div>
+        <div className="flex justify-end gap-2">
+          <button
+            onClick={onClose}
+            className="px-4 py-2 bg-gray-300 rounded-lg hover:bg-gray-400"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={onCloseAttendance}
+            className="px-4 py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600"
+          >
+            Close Attendance
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const AttendanceReport = () => {
   const { user, logout, isAuthenticated } = useAuth();
   const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [attendanceData, setAttendanceData] = useState([]);
+  const [pendingAttendanceData, setPendingAttendanceData] = useState([]);
   const [employees, setEmployees] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [viewModal, setViewModal] = useState(false);
   const [rejectModal, setRejectModal] = useState(false);
+  const [closeModalOpen, setCloseModalOpen] = useState(false);
   const [employeeModal, setEmployeeModal] = useState(false);
   const [reportModal, setReportModal] = useState(false);
   const [selectedRecord, setSelectedRecord] = useState(null);
   const [rejectRemarks, setRejectRemarks] = useState('');
+  const [closeRemarks, setCloseRemarks] = useState('');
   const [dateRange, setDateRange] = useState({ from: '', to: '' });
   const [showDateRangeModal, setShowDateRangeModal] = useState(false);
   const [employeeReport, setEmployeeReport] = useState(null);
+  const [pendingFilterText, setPendingFilterText] = useState('');
+  const [activeTab, setActiveTab] = useState('daily');
 
   const API_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://192.168.0.111:3001';
 
@@ -240,6 +289,7 @@ const AttendanceReport = () => {
   useEffect(() => {
     if (isAuthenticated && user?.role === 'admin') {
       fetchDailyAttendance();
+      fetchPendingOutAttendances();
       fetchEmployees();
     }
   }, [isAuthenticated, user]);
@@ -275,6 +325,29 @@ const AttendanceReport = () => {
       }
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchPendingOutAttendances = async () => {
+    try {
+      const response = await axios.get(`${API_BASE_URL}/api/admin/attendance/pending-out`, {
+        headers: { Authorization: `Bearer ${user.token}`, 'Content-Type': 'application/json' }
+      });
+      if (response.status === 401) {
+        toast.error('Session expired. Please login again.', { toastId: 'session-expired-pending' });
+        logout();
+        router.push('/login');
+        return;
+      }
+      setPendingAttendanceData(response.data);
+    } catch (error) {
+      const errorMessage = error.response?.data?.error || error.message || 'Failed to fetch pending out attendances';
+      toast.error(errorMessage, { toastId: 'fetch-pending-error' });
+      if (error.response?.status === 401) {
+        toast.error('Session expired. Please login again.', { toastId: 'session-expired-pending-error' });
+        logout();
+        router.push('/login');
+      }
     }
   };
 
@@ -362,6 +435,45 @@ const AttendanceReport = () => {
       toast.error(errorMessage, { toastId: 'reject-attendance-error' });
       if (error.response?.status === 401) {
         toast.error('Session expired. Please login again.', { toastId: 'session-expired-reject-error' });
+        logout();
+        router.push('/login');
+      }
+    }
+  };
+
+  const handleCloseAttendance = async () => {
+    if (!isAuthenticated || user?.role !== 'admin') {
+      toast.error('Access denied. Admin role required.', { toastId: 'auth-error-close' });
+      logout();
+      router.push('/login');
+      return;
+    }
+    try {
+      const response = await axios.put(
+        `${API_BASE_URL}/api/admin/attendance/${selectedRecord.attendance_id}/close`,
+        { remarks: closeRemarks },
+        { headers: { Authorization: `Bearer ${user.token}`, 'Content-Type': 'application/json' } }
+      );
+      if (response.status === 401) {
+        toast.error('Session expired. Please login again.', { toastId: 'session-expired-close' });
+        logout();
+        router.push('/login');
+        return;
+      }
+      setPendingAttendanceData((prev) =>
+        prev.map((record) =>
+          record.attendance_id === selectedRecord.attendance_id
+            ? { ...record, in_status: 'CLOSED', remarks: closeRemarks }
+            : record
+        )
+      );
+      toast.success('Attendance closed successfully', { toastId: 'close-success' });
+      closeModal();
+    } catch (error) {
+      const errorMessage = error.response?.data?.error || error.message || 'Failed to close attendance';
+      toast.error(errorMessage, { toastId: 'close-attendance-error' });
+      if (error.response?.status === 401) {
+        toast.error('Session expired. Please login again.', { toastId: 'session-expired-close-error' });
         logout();
         router.push('/login');
       }
@@ -478,6 +590,7 @@ const AttendanceReport = () => {
     switch (status) {
       case 'APPROVED': return 'bg-green-100 text-green-800';
       case 'REJECTED': return 'bg-red-100 text-red-800';
+      case 'CLOSED': return 'bg-yellow-100 text-yellow-800';
       default: return 'bg-gray-100 text-gray-800';
     }
   };
@@ -499,11 +612,13 @@ const AttendanceReport = () => {
   const closeModal = () => {
     setViewModal(false);
     setRejectModal(false);
+    setCloseModalOpen(false);
     setShowDateRangeModal(false);
     setEmployeeModal(false);
     setReportModal(false);
     setSelectedRecord(null);
     setRejectRemarks('');
+    setCloseRemarks('');
     setEmployeeReport(null);
   };
 
@@ -514,6 +629,18 @@ const AttendanceReport = () => {
   const handleCheckEmployeeAttendance = () => {
     setEmployeeModal(true);
   };
+
+  const handleClose = (record) => {
+    setSelectedRecord(record);
+    setCloseRemarks('');
+    setCloseModalOpen(true);
+  };
+
+  const filteredPendingData = pendingAttendanceData.filter(
+    (record) =>
+      record.full_name.toLowerCase().includes(pendingFilterText.toLowerCase()) ||
+      record.emp_id.toString().includes(pendingFilterText)
+  );
 
   const presentCount = attendanceData.filter((r) => r.in_time).length;
   const absentCount = attendanceData.filter((r) => !r.in_time).length;
@@ -547,7 +674,7 @@ const AttendanceReport = () => {
   return (
     <div className="min-h-screen bg-gray-100 flex flex-col lg:flex-row">
       {/* <Sidebar isOpen={sidebarOpen} toggleSidebar={toggleSidebar} /> */}
-      <div className={`flex-1 flex flex-col min-h-screen ${viewModal || rejectModal || showDateRangeModal || employeeModal || reportModal ? 'blur-sm' : ''}`}>
+      <div className={`flex-1 flex flex-col min-h-screen ${viewModal || rejectModal || showDateRangeModal || employeeModal || reportModal || closeModalOpen ? 'blur-sm' : ''}`}>
         {/* <Header toggleSidebar={toggleSidebar} /> */}
         <main className="flex-1 p-4">
           <div className="max-w-7xl mx-auto">
@@ -579,14 +706,54 @@ const AttendanceReport = () => {
               <SummaryCard title="Absent Today" value={absentCount} color="text-red-600" />
               <SummaryCard title="Attendance Rate" value={`${attendanceRate}%`} color="text-blue-600" />
             </div>
-            <AttendanceTable
-              data={attendanceData}
-              onView={(record) => { setSelectedRecord(record); setViewModal(true); }}
-              onReject={(record) => { setSelectedRecord(record); setRejectModal(true); }}
-              onCheckEmployeeAttendance={handleCheckEmployeeAttendance}
-              getStatusColor={getStatusColor}
-              calculateWorkingHours={calculateWorkingHours}
-            />
+            <div className="mb-4">
+              <div className="flex border-b border-gray-200">
+                <button
+                  className={`px-4 py-2 font-medium ${activeTab === 'daily' ? 'border-b-2 border-blue-500 text-blue-500' : 'text-gray-500'}`}
+                  onClick={() => setActiveTab('daily')}
+                >
+                  Daily Attendance
+                </button>
+                <button
+                  className={`px-4 py-2 font-medium ${activeTab === 'pending' ? 'border-b-2 border-blue-500 text-blue-500' : 'text-gray-500'}`}
+                  onClick={() => setActiveTab('pending')}
+                >
+                  Pending Out Attendances
+                </button>
+              </div>
+            </div>
+            {activeTab === 'daily' && (
+              <AttendanceTable
+                data={attendanceData}
+                onView={(record) => { setSelectedRecord(record); setViewModal(true); }}
+                onReject={(record) => { setSelectedRecord(record); setRejectModal(true); }}
+                onCheckEmployeeAttendance={handleCheckEmployeeAttendance}
+                getStatusColor={getStatusColor}
+                calculateWorkingHours={calculateWorkingHours}
+              />
+            )}
+            {activeTab === 'pending' && (
+              <>
+                <div className="mb-4 flex items-center gap-2">
+                  <Filter size={16} className="text-gray-600" />
+                  <input
+                    type="text"
+                    placeholder="Filter by name or ID..."
+                    value={pendingFilterText}
+                    onChange={(e) => setPendingFilterText(e.target.value)}
+                    className="px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 w-full max-w-md"
+                  />
+                </div>
+                <AttendanceTable
+                  data={filteredPendingData}
+                  onView={(record) => { setSelectedRecord(record); setViewModal(true); }}
+                  onReject={(record) => { setSelectedRecord(record); setRejectModal(true); }}
+                  onClose={handleClose}
+                  getStatusColor={getStatusColor}
+                  calculateWorkingHours={calculateWorkingHours}
+                />
+              </>
+            )}
           </div>
         </main>
       </div>
@@ -605,6 +772,16 @@ const AttendanceReport = () => {
           remarks={rejectRemarks}
           setRemarks={setRejectRemarks}
           onReject={handleRejectAttendance}
+          onClose={closeModal}
+          onBackdropClick={handleModalBackdropClick}
+        />
+      )}
+      {closeModalOpen && selectedRecord && (
+        <CloseModal
+          record={selectedRecord}
+          remarks={closeRemarks}
+          setRemarks={setCloseRemarks}
+          onCloseAttendance={handleCloseAttendance}
           onClose={closeModal}
           onBackdropClick={handleModalBackdropClick}
         />
