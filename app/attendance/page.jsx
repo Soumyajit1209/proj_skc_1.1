@@ -4,7 +4,7 @@ import axios from 'axios';
 import { useAuth } from '../../contexts/AuthContext';
 import { useRouter } from 'next/navigation';
 import { ToastContainer, toast } from 'react-toastify';
-import { Calendar, Download, User, Printer, Clock, Filter } from 'lucide-react';
+import { Calendar, Download, User, Printer, Clock, Filter, Search, XCircle, CheckCircle, AlertTriangle } from 'lucide-react';
 import Header from '@/components/Header';
 import Sidebar from '@/components/Sidebar';
 import ErrorAlert from '@/components/ui/ErrorAlert';
@@ -14,6 +14,143 @@ import ViewModal from '@/components/ViewModal';
 import RejectModal from '@/components/RejectModal';
 import DateRangeModal from '@/components/DateRangeModal';
 import { X } from 'lucide-react';
+
+// Enhanced Pending Attendance Table Component
+const PendingAttendanceTable = ({ data, onView, onClose, getStatusColor, calculateWorkingHours }) => {
+  return (
+    <div className="bg-white rounded-lg shadow overflow-hidden">
+      <div className="overflow-x-auto">
+        <table className="min-w-full divide-y divide-gray-200">
+          <thead className="bg-red-50">
+            <tr>
+              {['Employee ID', 'Employee Name', 'Date', 'Check In', 'Hours Worked', 'Status', 'Actions'].map((header) => (
+                <th key={header} className="px-4 py-3 text-left text-xs font-bold text-red-800 uppercase tracking-wider">
+                  {header}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody className="bg-white divide-y divide-gray-200">
+            {data.length === 0 ? (
+              <tr>
+                <td colSpan={7} className="px-6 py-8 text-center text-gray-500">
+                  <div className="flex flex-col items-center">
+                    <CheckCircle size={48} className="text-green-500 mb-2" />
+                    <p className="text-lg font-medium">No pending out-times found</p>
+                    <p className="text-sm">All employees have completed their attendance for yesterday</p>
+                  </div>
+                </td>
+              </tr>
+            ) : (
+              data.map((record) => (
+                <tr key={record.attendance_id} className="hover:bg-gray-50 transition-colors">
+                  <td className="px-4 py-3 text-sm font-medium text-gray-900">{record.emp_id}</td>
+                  <td className="px-4 py-3 text-sm text-gray-600">{record.full_name}</td>
+                  <td className="px-4 py-3 text-sm text-gray-600">{record.attendance_date}</td>
+                  <td className="px-4 py-3 text-sm text-gray-600">{record.in_time || '-'}</td>
+                  <td className="px-4 py-3 text-sm text-gray-600">
+                    {record.in_time ? calculateWorkingHours(record.in_time, new Date().toTimeString().slice(0, 5)) : '-'}
+                  </td>
+                  <td className="px-4 py-3">
+                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(record.in_status)}`}>
+                      {record.in_status}
+                    </span>
+                    <div className="flex items-center mt-1">
+                      <AlertTriangle size={12} className="text-orange-500 mr-1" />
+                      <span className="text-xs text-orange-600">Missing out-time</span>
+                    </div>
+                  </td>
+                  <td className="px-4 py-3 text-sm">
+                    <div className="flex space-x-2">
+                      <button
+                        onClick={() => onView(record)}
+                        className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded text-xs font-medium transition-colors"
+                      >
+                        View
+                      </button>
+                      <button
+                        onClick={() => onClose(record)}
+                        className="bg-orange-500 hover:bg-orange-600 text-white px-3 py-1 rounded text-xs font-medium transition-colors"
+                      >
+                        Close
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+};
+
+// Enhanced Filter Component for Pending Attendance
+const PendingAttendanceFilters = ({ 
+  nameFilter, 
+  setNameFilter, 
+  dateFilter, 
+  setDateFilter, 
+  statusFilter, 
+  setStatusFilter,
+  onClearFilters,
+  totalRecords,
+  filteredRecords
+}) => {
+  return (
+    <div className="bg-white rounded-lg shadow p-4 mb-4">
+      <div className="flex flex-col lg:flex-row gap-4 items-center justify-between">
+        <div className="flex flex-col sm:flex-row gap-4 flex-1">
+          <div className="flex items-center gap-2">
+            <Search size={16} className="text-gray-600" />
+            <input
+              type="text"
+              placeholder="Search by name or employee ID..."
+              value={nameFilter}
+              onChange={(e) => setNameFilter(e.target.value)}
+              className="px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 w-full min-w-[250px]"
+            />
+          </div>
+          
+          <div className="flex items-center gap-2">
+            <Calendar size={16} className="text-gray-600" />
+            <input
+              type="date"
+              value={dateFilter}
+              onChange={(e) => setDateFilter(e.target.value)}
+              className="px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+          >
+            <option value="">All Status</option>
+            <option value="APPROVED">Approved</option>
+            <option value="PENDING">Pending</option>
+            <option value="CLOSED">Closed</option>
+          </select>
+        </div>
+
+        <div className="flex items-center gap-4">
+          <div className="text-sm text-gray-600">
+            Showing {filteredRecords} of {totalRecords} records
+          </div>
+          <button
+            onClick={onClearFilters}
+            className="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg text-sm flex items-center gap-2"
+          >
+            <XCircle size={16} />
+            Clear Filters
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 const EmployeeAttendanceModal = ({ onClose, onSubmit, employees, onBackdropClick }) => {
   const [filterText, setFilterText] = useState('');
@@ -208,7 +345,7 @@ const EmployeeAttendanceReportModal = ({ data, onClose, onBackdropClick, calcula
   );
 };
 
-const CloseModal = ({ record, remarks, setRemarks, onClose, onBackdropClick, onCloseAttendance }) => {
+const CloseAttendanceModal = ({ record, remarks, setRemarks, onClose, onBackdropClick, onCloseAttendance }) => {
   return (
     <div
       className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50"
@@ -216,34 +353,78 @@ const CloseModal = ({ record, remarks, setRemarks, onClose, onBackdropClick, onC
     >
       <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-md">
         <div className="flex justify-between items-center mb-4">
-          <h2 className="text-xl font-semibold text-gray-800">Close Attendance</h2>
+          <h2 className="text-xl font-semibold text-gray-800 flex items-center gap-2">
+            <AlertTriangle className="text-orange-500" size={20} />
+            Close Attendance
+          </h2>
           <button onClick={onClose} className="text-gray-600 hover:text-gray-800">
             <X size={24} />
           </button>
         </div>
-        <p className="mb-4 text-gray-600">
-          Are you sure you want to close this attendance for {record.full_name} on {record.attendance_date}?
-        </p>
-        <div className="mb-4">
-          <label className="block text-sm font-medium text-gray-700 mb-1">Remarks (optional)</label>
+        
+        <div className="mb-4 p-4 bg-orange-50 rounded-lg border border-orange-200">
+          <div className="flex items-start gap-3">
+            <AlertTriangle className="text-orange-500 mt-0.5" size={16} />
+            <div>
+              <h4 className="font-medium text-orange-800">Missing Out-Time Detected</h4>
+              <p className="text-sm text-orange-700 mt-1">
+                This employee has not marked their out-time for the day. Closing this attendance will mark it as complete without an out-time record.
+              </p>
+            </div>
+          </div>
+        </div>
+        
+        <div className="mb-4 bg-gray-50 p-4 rounded-lg">
+          <div className="grid grid-cols-2 gap-4 text-sm">
+            <div>
+              <span className="font-medium text-gray-700">Employee:</span>
+              <p className="text-gray-600">{record.full_name}</p>
+            </div>
+            <div>
+              <span className="font-medium text-gray-700">Employee ID:</span>
+              <p className="text-gray-600">{record.emp_id}</p>
+            </div>
+            <div>
+              <span className="font-medium text-gray-700">Date:</span>
+              <p className="text-gray-600">{record.attendance_date}</p>
+            </div>
+            <div>
+              <span className="font-medium text-gray-700">Check In:</span>
+              <p className="text-gray-600">{record.in_time || 'Not recorded'}</p>
+            </div>
+          </div>
+        </div>
+        
+        <div className="mb-6">
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Remarks <span className="text-red-500">*</span>
+          </label>
           <textarea
             value={remarks}
             onChange={(e) => setRemarks(e.target.value)}
-            className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
-            rows={3}
+            className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+            rows={4}
+            placeholder="Please provide a reason for closing this attendance (e.g., Employee forgot to mark out-time, Emergency leave, etc.)"
+            required
           />
+          <p className="text-xs text-gray-500 mt-1">
+            This remark will be recorded in the attendance system for future reference.
+          </p>
         </div>
-        <div className="flex justify-end gap-2">
+        
+        <div className="flex justify-end gap-3">
           <button
             onClick={onClose}
-            className="px-4 py-2 bg-gray-300 rounded-lg hover:bg-gray-400"
+            className="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-colors"
           >
             Cancel
           </button>
           <button
             onClick={onCloseAttendance}
-            className="px-4 py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600"
+            disabled={!remarks.trim()}
+            className="px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
           >
+            <XCircle size={16} />
             Close Attendance
           </button>
         </div>
@@ -272,8 +453,12 @@ const AttendanceReport = () => {
   const [dateRange, setDateRange] = useState({ from: '', to: '' });
   const [showDateRangeModal, setShowDateRangeModal] = useState(false);
   const [employeeReport, setEmployeeReport] = useState(null);
-  const [pendingFilterText, setPendingFilterText] = useState('');
   const [activeTab, setActiveTab] = useState('daily');
+
+  // Enhanced filter states for pending attendance
+  const [pendingNameFilter, setPendingNameFilter] = useState('');
+  const [pendingDateFilter, setPendingDateFilter] = useState('');
+  const [pendingStatusFilter, setPendingStatusFilter] = useState('');
 
   const API_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://192.168.0.111:3001';
 
@@ -448,25 +633,31 @@ const AttendanceReport = () => {
       router.push('/login');
       return;
     }
+    
+    if (!closeRemarks.trim()) {
+      toast.error('Please enter remarks for closing attendance', { toastId: 'close-remarks-required' });
+      return;
+    }
+
     try {
       const response = await axios.put(
         `${API_BASE_URL}/api/admin/attendance/${selectedRecord.attendance_id}/close`,
         { remarks: closeRemarks },
         { headers: { Authorization: `Bearer ${user.token}`, 'Content-Type': 'application/json' } }
       );
+      
       if (response.status === 401) {
         toast.error('Session expired. Please login again.', { toastId: 'session-expired-close' });
         logout();
         router.push('/login');
         return;
       }
+
+      // Remove the closed attendance from pending list
       setPendingAttendanceData((prev) =>
-        prev.map((record) =>
-          record.attendance_id === selectedRecord.attendance_id
-            ? { ...record, in_status: 'CLOSED', remarks: closeRemarks }
-            : record
-        )
+        prev.filter((record) => record.attendance_id !== selectedRecord.attendance_id)
       );
+      
       toast.success('Attendance closed successfully', { toastId: 'close-success' });
       closeModal();
     } catch (error) {
@@ -636,11 +827,30 @@ const AttendanceReport = () => {
     setCloseModalOpen(true);
   };
 
-  const filteredPendingData = pendingAttendanceData.filter(
-    (record) =>
-      record.full_name.toLowerCase().includes(pendingFilterText.toLowerCase()) ||
-      record.emp_id.toString().includes(pendingFilterText)
-  );
+  // Enhanced filtering logic for pending attendance
+  const getFilteredPendingData = () => {
+    return pendingAttendanceData.filter((record) => {
+      const nameMatch = !pendingNameFilter || 
+        record.full_name.toLowerCase().includes(pendingNameFilter.toLowerCase()) ||
+        record.emp_id.toString().includes(pendingNameFilter);
+      
+      const dateMatch = !pendingDateFilter || 
+        record.attendance_date === pendingDateFilter;
+      
+      const statusMatch = !pendingStatusFilter || 
+        record.in_status === pendingStatusFilter;
+      
+      return nameMatch && dateMatch && statusMatch;
+    });
+  };
+
+  const clearPendingFilters = () => {
+    setPendingNameFilter('');
+    setPendingDateFilter('');
+    setPendingStatusFilter('');
+  };
+
+  const filteredPendingData = getFilteredPendingData();
 
   const presentCount = attendanceData.filter((r) => r.in_time).length;
   const absentCount = attendanceData.filter((r) => !r.in_time).length;
@@ -700,28 +910,53 @@ const AttendanceReport = () => {
                 </button>
               </div>
             </div>
+            
             {error && <ErrorAlert message={error} onClose={() => setError(null)} />}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
+            
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
               <SummaryCard title="Present Today" value={presentCount} color="text-green-600" />
               <SummaryCard title="Absent Today" value={absentCount} color="text-red-600" />
               <SummaryCard title="Attendance Rate" value={`${attendanceRate}%`} color="text-blue-600" />
+              <SummaryCard 
+                title="Pending Out-Times" 
+                value={pendingAttendanceData.length} 
+                color="text-orange-600"
+                icon={<AlertTriangle size={20} />}
+              />
             </div>
+            
             <div className="mb-4">
               <div className="flex border-b border-gray-200">
                 <button
-                  className={`px-4 py-2 font-medium ${activeTab === 'daily' ? 'border-b-2 border-blue-500 text-blue-500' : 'text-gray-500'}`}
+                  className={`px-4 py-2 font-medium flex items-center gap-2 ${
+                    activeTab === 'daily' 
+                      ? 'border-b-2 border-blue-500 text-blue-500' 
+                      : 'text-gray-500 hover:text-gray-700'
+                  }`}
                   onClick={() => setActiveTab('daily')}
                 >
+                  <CheckCircle size={16} />
                   Daily Attendance
                 </button>
                 <button
-                  className={`px-4 py-2 font-medium ${activeTab === 'pending' ? 'border-b-2 border-blue-500 text-blue-500' : 'text-gray-500'}`}
+                  className={`px-4 py-2 font-medium flex items-center gap-2 ${
+                    activeTab === 'pending' 
+                      ? 'border-b-2 border-orange-500 text-orange-500' 
+                      : 'text-gray-500 hover:text-gray-700'
+                  }`}
                   onClick={() => setActiveTab('pending')}
                 >
-                  Pending Out Attendances
+                  <AlertTriangle size={16} />
+                  Pending Out-Times
+                  {pendingAttendanceData.length > 0 && (
+                    <span className="bg-orange-500 text-white text-xs px-2 py-1 rounded-full ml-1">
+                      {pendingAttendanceData.length}
+                    </span>
+                  )}
                 </button>
               </div>
             </div>
+
             {activeTab === 'daily' && (
               <AttendanceTable
                 data={attendanceData}
@@ -732,22 +967,37 @@ const AttendanceReport = () => {
                 calculateWorkingHours={calculateWorkingHours}
               />
             )}
+
             {activeTab === 'pending' && (
               <>
-                <div className="mb-4 flex items-center gap-2">
-                  <Filter size={16} className="text-gray-600" />
-                  <input
-                    type="text"
-                    placeholder="Filter by name or ID..."
-                    value={pendingFilterText}
-                    onChange={(e) => setPendingFilterText(e.target.value)}
-                    className="px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 w-full max-w-md"
-                  />
+                <PendingAttendanceFilters
+                  nameFilter={pendingNameFilter}
+                  setNameFilter={setPendingNameFilter}
+                  dateFilter={pendingDateFilter}
+                  setDateFilter={setPendingDateFilter}
+                  statusFilter={pendingStatusFilter}
+                  setStatusFilter={setPendingStatusFilter}
+                  onClearFilters={clearPendingFilters}
+                  totalRecords={pendingAttendanceData.length}
+                  filteredRecords={filteredPendingData.length}
+                />
+                
+                <div className="mb-4 bg-orange-50 border border-orange-200 rounded-lg p-4">
+                  <div className="flex items-start gap-3">
+                    <AlertTriangle className="text-orange-500 mt-0.5" size={20} />
+                    <div>
+                      <h4 className="font-medium text-orange-800">Pending Out-Time Management</h4>
+                      <p className="text-sm text-orange-700 mt-1">
+                        These employees have checked in but haven't marked their out-time for yesterday. 
+                        You can close their attendance manually with appropriate remarks.
+                      </p>
+                    </div>
+                  </div>
                 </div>
-                <AttendanceTable
+
+                <PendingAttendanceTable
                   data={filteredPendingData}
                   onView={(record) => { setSelectedRecord(record); setViewModal(true); }}
-                  onReject={(record) => { setSelectedRecord(record); setRejectModal(true); }}
                   onClose={handleClose}
                   getStatusColor={getStatusColor}
                   calculateWorkingHours={calculateWorkingHours}
@@ -757,6 +1007,7 @@ const AttendanceReport = () => {
           </div>
         </main>
       </div>
+
       {viewModal && selectedRecord && (
         <ViewModal
           record={selectedRecord}
@@ -766,6 +1017,7 @@ const AttendanceReport = () => {
           onBackdropClick={handleModalBackdropClick}
         />
       )}
+
       {rejectModal && selectedRecord && (
         <RejectModal
           record={selectedRecord}
@@ -776,8 +1028,9 @@ const AttendanceReport = () => {
           onBackdropClick={handleModalBackdropClick}
         />
       )}
+
       {closeModalOpen && selectedRecord && (
-        <CloseModal
+        <CloseAttendanceModal
           record={selectedRecord}
           remarks={closeRemarks}
           setRemarks={setCloseRemarks}
@@ -786,6 +1039,7 @@ const AttendanceReport = () => {
           onBackdropClick={handleModalBackdropClick}
         />
       )}
+
       {showDateRangeModal && (
         <DateRangeModal
           dateRange={dateRange}
@@ -795,6 +1049,7 @@ const AttendanceReport = () => {
           onBackdropClick={handleModalBackdropClick}
         />
       )}
+
       {employeeModal && (
         <EmployeeAttendanceModal
           employees={employees}
@@ -803,6 +1058,7 @@ const AttendanceReport = () => {
           onBackdropClick={handleModalBackdropClick}
         />
       )}
+
       {reportModal && employeeReport && (
         <EmployeeAttendanceReportModal
           data={employeeReport}
@@ -811,6 +1067,7 @@ const AttendanceReport = () => {
           calculateWorkingHours={calculateWorkingHours}
         />
       )}
+
       <ToastContainer
         position="top-right"
         autoClose={5000}
