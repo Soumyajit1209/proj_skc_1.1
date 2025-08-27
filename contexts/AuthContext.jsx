@@ -1,7 +1,5 @@
-
-"use client"
+"use client";
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
 
 const AuthContext = createContext();
 
@@ -16,9 +14,7 @@ export const useAuth = () => {
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
-  const router = useRouter();
 
-  // Helper function to decode JWT token
   const decodeJWT = useCallback((token) => {
     try {
       const payload = JSON.parse(atob(token.split('.')[1]));
@@ -29,7 +25,6 @@ export const AuthProvider = ({ children }) => {
     }
   }, []);
 
-  // Helper function to check if token is expired
   const isTokenExpired = useCallback((token) => {
     if (!token) return true;
     
@@ -40,7 +35,6 @@ export const AuthProvider = ({ children }) => {
     return decoded.exp < currentTime;
   }, [decodeJWT]);
 
-  // Helper function to get cookies
   const getCookies = useCallback(() => {
     if (typeof document === 'undefined') return {};
     
@@ -53,19 +47,20 @@ export const AuthProvider = ({ children }) => {
     }, {});
   }, []);
 
-  // Function to clear expired token
   const clearExpiredToken = useCallback(() => {
     document.cookie = 'token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
     document.cookie = 'role=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+    document.cookie = 'user_data=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
     setUser(null);
-    router.push('/login');
-  }, [router]);
+  }, []);
 
-  // Function to check auth status
   const checkAuthStatus = useCallback(() => {
     const cookies = getCookies();
     const token = cookies.token;
     const role = cookies.role;
+    const userData = cookies.user_data;
+
+    console.log('Checking auth status:', { token, role, userData });
 
     if (!token || !role) {
       setUser(null);
@@ -73,7 +68,6 @@ export const AuthProvider = ({ children }) => {
       return;
     }
 
-    // Check if token is expired
     if (isTokenExpired(token)) {
       console.log('Token expired, clearing auth state');
       clearExpiredToken();
@@ -81,64 +75,84 @@ export const AuthProvider = ({ children }) => {
       return;
     }
 
-    // Token is valid, set user
-    setUser({ token, role });
+    let parsedUserData = {};
+    if (userData) {
+      try {
+        parsedUserData = JSON.parse(userData);
+      } catch (error) {
+        console.error('Error parsing user data:', error);
+      }
+    }
+
+    setUser({ 
+      token, 
+      role,
+      ...parsedUserData
+    });
     setLoading(false);
   }, [getCookies, isTokenExpired, clearExpiredToken]);
 
-  // Function to check token expiration periodically
-  const checkTokenExpiration = useCallback(() => {
-    const cookies = getCookies();
-    const token = cookies.token;
-
-    if (token && isTokenExpired(token)) {
-      console.log('Token expired during session, logging out');
-      clearExpiredToken();
-    }
-  }, [getCookies, isTokenExpired, clearExpiredToken]);
-
-  // Initial auth check
   useEffect(() => {
     checkAuthStatus();
   }, [checkAuthStatus]);
 
-  // Set up periodic token expiration check
   useEffect(() => {
     if (!user?.token) return;
 
     const interval = setInterval(() => {
-      checkTokenExpiration();
-    }, 60000); // Check every minute
+      const cookies = getCookies();
+      const token = cookies.token;
+
+      if (token && isTokenExpired(token)) {
+        console.log('Token expired during session, logging out');
+        clearExpiredToken();
+      }
+    }, 60000);
 
     return () => clearInterval(interval);
-  }, [user?.token, checkTokenExpiration]);
+  }, [user?.token, getCookies, isTokenExpired, clearExpiredToken]);
 
-  const login = useCallback((token, role) => {
-    // Check if the new token is already expired
+  const login = useCallback((token, role, userData = {}) => {
     if (isTokenExpired(token)) {
       console.error('Cannot login with expired token');
       return;
     }
 
+    console.log('Logging in user:', { token, role, userData });
+
     document.cookie = `token=${encodeURIComponent(token)}; path=/; secure; samesite=strict`;
     document.cookie = `role=${encodeURIComponent(role)}; path=/; secure; samesite=strict`;
-    setUser({ token, role });
-    router.push('/');
-  }, [isTokenExpired, router]);
+    
+    if (userData && Object.keys(userData).length > 0) {
+      document.cookie = `user_data=${encodeURIComponent(JSON.stringify(userData))}; path=/; secure; samesite=strict`;
+    }
+
+    setUser({ token, role, ...userData });
+  }, [isTokenExpired]);
 
   const logout = useCallback(() => {
     document.cookie = 'token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
     document.cookie = 'role=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+    document.cookie = 'user_data=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
     setUser(null);
-    router.push('/login');
-  }, [router]);
+  }, []);
+
+  const isAdmin = useCallback(() => {
+    return user?.role === 'admin' || user?.role === 'superadmin';
+  }, [user?.role]);
+
+  const isSuperAdmin = useCallback(() => {
+    return user?.role === 'superadmin';
+  }, [user?.role]);
 
   const value = {
     user,
     login,
     logout,
     loading,
-    isAuthenticated: !!user
+    isAuthenticated: !!user,
+    isAdmin,
+    isSuperAdmin
   };
 
   return (
