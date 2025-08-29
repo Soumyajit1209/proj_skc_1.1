@@ -101,7 +101,7 @@ const EmployeeModal = ({ employee, onClose, onUpdate }) => {
       is_active: Number(employee.is_active),
     });
     setProfilePictureFile(null);
-    setPreviewImage(employee.profile_picture ? `http://localhost:3001${employee.profile_picture}` : null);
+    setPreviewImage(employee.profile_picture ? `${process.env.NEXT_PUBLIC_BACKEND_URL}${employee.profile_picture}` : null);
     setIsEditing(false);
   };
 

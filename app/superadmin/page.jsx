@@ -476,7 +476,7 @@ const SuperadminDashboard = () => {
           className="flex items-center space-x-2 bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors"
         >
           <Plus className="h-4 w-4" />
-          <span>Add Admin</span>
+          <span>Add Branch Admin</span>
         </button>
       </div>
 

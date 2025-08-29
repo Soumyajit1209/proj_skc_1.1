@@ -39,7 +39,7 @@ const PendingAttendanceTable = ({ data, onView, onClose, getStatusColor, calcula
                     <p className="text-lg font-medium">No pending out-times found</p>
                     <p className="text-sm">All employees have completed their attendance for yesterday</p>
                   </div>
-                </td>
+                </td> 
               </tr>
             ) : (
               data.map((record) => (
@@ -480,8 +480,8 @@ const AttendanceReport = () => {
   }, [isAuthenticated, user]);
 
   const fetchDailyAttendance = async () => {
-    if (!isAuthenticated || user?.role !== 'admin') {
-      toast.error('Access denied. Admin role required.', { toastId: 'auth-error-fetch' });
+    if (!isAuthenticated || user?.role !== 'admin' || !user?.branch_id) {
+      toast.error('Access denied or branch information missing.', { toastId: 'auth-error-fetch' });
       logout();
       router.push('/login');
       return;
@@ -489,7 +489,8 @@ const AttendanceReport = () => {
     try {
       setLoading(true);
       const response = await axios.get(`${API_BASE_URL}/api/admin/attendance/daily`, {
-        headers: { Authorization: `Bearer ${user.token}`, 'Content-Type': 'application/json' }
+        headers: { Authorization: `Bearer ${user.token}`, 'Content-Type': 'application/json' },
+        params: { branch_id: user.branch_id }
       });
       if (response.status === 401) {
         toast.error('Session expired. Please login again.', { toastId: 'session-expired-fetch' });
@@ -514,9 +515,16 @@ const AttendanceReport = () => {
   };
 
   const fetchPendingOutAttendances = async () => {
+    if (!isAuthenticated || user?.role !== 'admin' || !user?.branch_id) {
+      toast.error('Access denied or branch information missing.', { toastId: 'auth-error-pending' });
+      logout();
+      router.push('/login');
+      return;
+    }
     try {
       const response = await axios.get(`${API_BASE_URL}/api/admin/attendance/pending-out`, {
-        headers: { Authorization: `Bearer ${user.token}`, 'Content-Type': 'application/json' }
+        headers: { Authorization: `Bearer ${user.token}`, 'Content-Type': 'application/json' },
+        params: { branch_id: user.branch_id }
       });
       if (response.status === 401) {
         toast.error('Session expired. Please login again.', { toastId: 'session-expired-pending' });
@@ -536,10 +544,17 @@ const AttendanceReport = () => {
     }
   };
 
-  const fetchEmployees = async () => {
+ const fetchEmployees = async () => {
+    if (!isAuthenticated || user?.role !== 'admin' || !user?.branch_id) {
+      toast.error('Access denied or branch information missing.', { toastId: 'auth-error-employees' });
+      logout();
+      router.push('/login');
+      return;
+    }
     try {
       const response = await axios.get(`${API_BASE_URL}/api/admin/all-employees`, {
-        headers: { Authorization: `Bearer ${user.token}`, 'Content-Type': 'application/json' }
+        headers: { Authorization: `Bearer ${user.token}`, 'Content-Type': 'application/json' },
+        params: { branch_id: user.branch_id }
       });
       if (response.status === 401) {
         toast.error('Session expired. Please login again.', { toastId: 'session-expired-employees' });
@@ -554,10 +569,16 @@ const AttendanceReport = () => {
     }
   };
 
-  const fetchEmployeeAttendanceReport = async (emp_id, dateRange) => {
+ const fetchEmployeeAttendanceReport = async (emp_id, dateRange) => {
+    if (!isAuthenticated || user?.role !== 'admin' || !user?.branch_id) {
+      toast.error('Access denied or branch information missing.', { toastId: 'auth-error-report' });
+      logout();
+      router.push('/login');
+      return;
+    }
     try {
       const response = await axios.get(`${API_BASE_URL}/api/admin/attendance/employee/${emp_id}`, {
-        params: { from_date: dateRange.from, to_date: dateRange.to },
+        params: { from_date: dateRange.from, to_date: dateRange.to, branch_id: user.branch_id },
         headers: { Authorization: `Bearer ${user.token}`, 'Content-Type': 'application/json' }
       });
       if (response.status === 401) {
@@ -584,8 +605,8 @@ const AttendanceReport = () => {
   };
 
   const handleRejectAttendance = async () => {
-    if (!isAuthenticated || user?.role !== 'admin') {
-      toast.error('Access denied. Admin role required.', { toastId: 'auth-error-reject' });
+    if (!isAuthenticated || user?.role !== 'admin' || !user?.branch_id) {
+      toast.error('Access denied or branch information missing.', { toastId: 'auth-error-reject' });
       logout();
       router.push('/login');
       return;
@@ -597,7 +618,7 @@ const AttendanceReport = () => {
     try {
       const response = await axios.put(
         `${API_BASE_URL}/api/admin/attendance/${selectedRecord.attendance_id}/reject`,
-        { remarks: rejectRemarks },
+        { remarks: rejectRemarks, branch_id: user.branch_id },
         { headers: { Authorization: `Bearer ${user.token}`, 'Content-Type': 'application/json' } }
       );
       if (response.status === 401) {
@@ -627,8 +648,8 @@ const AttendanceReport = () => {
   };
 
   const handleCloseAttendance = async () => {
-    if (!isAuthenticated || user?.role !== 'admin') {
-      toast.error('Access denied. Admin role required.', { toastId: 'auth-error-close' });
+    if (!isAuthenticated || user?.role !== 'admin' || !user?.branch_id) {
+      toast.error('Access denied or branch information missing.', { toastId: 'auth-error-close' });
       logout();
       router.push('/login');
       return;
@@ -642,7 +663,7 @@ const AttendanceReport = () => {
     try {
       const response = await axios.put(
         `${API_BASE_URL}/api/admin/attendance/${selectedRecord.attendance_id}/close`,
-        { remarks: closeRemarks },
+        { remarks: closeRemarks, branch_id: user.branch_id },
         { headers: { Authorization: `Bearer ${user.token}`, 'Content-Type': 'application/json' } }
       );
       
@@ -672,8 +693,8 @@ const AttendanceReport = () => {
   };
 
   const handleDownloadDaily = async () => {
-    if (!isAuthenticated || user?.role !== 'admin') {
-      toast.error('Access denied. Admin role required.', { toastId: 'auth-error-download' });
+    if (!isAuthenticated || user?.role !== 'admin' || !user?.branch_id) {
+      toast.error('Access denied or branch information missing.', { toastId: 'auth-error-download' });
       logout();
       router.push('/login');
       return;
@@ -681,6 +702,7 @@ const AttendanceReport = () => {
     try {
       const response = await axios.get(`${API_BASE_URL}/api/admin/attendance/daily/download`, {
         headers: { Authorization: `Bearer ${user.token}` },
+        params: { branch_id: user.branch_id },
         responseType: 'blob'
       });
       if (response.status === 401) {
@@ -720,10 +742,9 @@ const AttendanceReport = () => {
       }
     }
   };
-
-  const handleDownloadByRange = async () => {
-    if (!isAuthenticated || user?.role !== 'admin') {
-      toast.error('Access denied. Admin role required.', { toastId: 'auth-error-download-range' });
+ const handleDownloadByRange = async () => {
+    if (!isAuthenticated || user?.role !== 'admin' || !user?.branch_id) {
+      toast.error('Access denied or branch information missing.', { toastId: 'auth-error-download-range' });
       logout();
       router.push('/login');
       return;
@@ -734,7 +755,7 @@ const AttendanceReport = () => {
     }
     try {
       const response = await axios.get(`${API_BASE_URL}/api/admin/attendance/range/download`, {
-        params: { from_date: dateRange.from, to_date: dateRange.to },
+        params: { from_date: dateRange.from, to_date: dateRange.to, branch_id: user.branch_id },
         headers: { Authorization: `Bearer ${user.token}` },
         responseType: 'blob'
       });
@@ -776,6 +797,7 @@ const AttendanceReport = () => {
       }
     }
   };
+  
 
   const getStatusColor = (status) => {
     switch (status) {
@@ -856,7 +878,7 @@ const AttendanceReport = () => {
   const absentCount = attendanceData.filter((r) => !r.in_time).length;
   const attendanceRate = attendanceData.length > 0 ? Math.round((presentCount / attendanceData.length) * 100) : 0;
 
-  if (!isAuthenticated || user?.role !== 'admin') {
+  if (!isAuthenticated || user?.role !== 'admin' || !user?.branch_id){
     return (
       <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4">
         <div className="bg-white rounded-lg shadow-lg p-6 max-w-md w-full text-center">

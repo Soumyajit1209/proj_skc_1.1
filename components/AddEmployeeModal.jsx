@@ -1,10 +1,13 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { X, User, Upload } from "lucide-react"
-import { toast } from 'react-toastify'
+import { useState, useEffect } from "react";
+import { X, User, Upload } from "lucide-react";
+import { toast } from "react-toastify";
+import axios from "axios";
+import { useAuth } from "../contexts/AuthContext";
 
-const AddEmployeeModal = ({ onClose, onAdd }) => {
+const AddEmployeeModal = ({ onClose, onAdd, adminBranchId }) => {
+  const { user } = useAuth();
   const [formData, setFormData] = useState({
     full_name: "",
     phone_no: "",
@@ -13,57 +16,110 @@ const AddEmployeeModal = ({ onClose, onAdd }) => {
     username: "",
     password: "",
     is_active: 1,
-  })
-  const [profilePictureFile, setProfilePictureFile] = useState(null)
-  const [previewImage, setPreviewImage] = useState(null)
+  });
+  const [profilePictureFile, setProfilePictureFile] = useState(null);
+  const [previewImage, setPreviewImage] = useState(null);
+  const [branchName, setBranchName] = useState("");
+  const [errors, setErrors] = useState({});
 
-  // Debug log to verify onAdd prop
-  console.log("AddEmployeeModal: onAdd prop received:", typeof onAdd)
+  // Debug log to verify props and user
+  console.log("AddEmployeeModal: Props and user:", {
+    onAdd: typeof onAdd,
+    adminBranchId,
+    userBranchId: user?.branch_id,
+  });
+
+  // Fetch branch name for display
+  useEffect(() => {
+    const fetchBranchName = async () => {
+      if (!adminBranchId || !user?.token) {
+        setBranchName("Unknown Branch");
+        return;
+      }
+      try {
+        const response = await axios.get(
+          `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/admin/branches`,
+          {
+            headers: { Authorization: `Bearer ${user.token}` },
+          }
+        );
+        const branch = response.data.find((b) => b.branch_id === adminBranchId);
+        setBranchName(branch?.branch_name || "Unknown Branch");
+      } catch (error) {
+        console.error("Error fetching branch name:", error);
+        setBranchName("Unknown Branch");
+      }
+    };
+    fetchBranchName();
+  }, [adminBranchId, user?.token]);
 
   const handleFileChange = (e) => {
-    const file = e.target.files?.[0]
+    const file = e.target.files?.[0];
     if (file) {
       if (!file.type.startsWith("image/")) {
-        toast.error("Please upload an image file", { toastId: "invalid-image-type" })
-        return
+        toast.error("Please upload an image file", { toastId: "invalid-image-type" });
+        return;
       }
       if (file.size > 5 * 1024 * 1024) {
-        toast.error("Image size should not exceed 5MB", { toastId: "image-size-exceeded" })
-        return
+        toast.error("Image size should not exceed 5MB", { toastId: "image-size-exceeded" });
+        return;
       }
 
-      setProfilePictureFile(file)
-      const reader = new FileReader()
+      setProfilePictureFile(file);
+      const reader = new FileReader();
       reader.onloadend = () => {
-        setPreviewImage(reader.result)
-      }
-      reader.readAsDataURL(file)
+        setPreviewImage(reader.result);
+      };
+      reader.readAsDataURL(file);
     }
-  }
-
-  const handleSubmit = (e) => {
-    e.preventDefault()
-    // Validate required fields
-    if (!formData.full_name || !formData.username || !formData.password) {
-      toast.error("Full Name, Username, and Password are required", { toastId: "required-fields-error" })
-      return
-    }
-    if (!onAdd) {
-      toast.error("Add employee handler is not defined", { toastId: "onAdd-undefined" })
-      console.error("AddEmployeeModal: onAdd is undefined")
-      return
-    }
-    console.log("AddEmployeeModal: Submitting formData:", { ...formData, profilePictureFile }) // Debug log
-    onAdd({ ...formData, profilePictureFile })
-  }
+  };
 
   const handleChange = (e) => {
-    const { name, value } = e.target
+    const { name, value } = e.target;
     setFormData({
       ...formData,
       [name]: name === "is_active" ? Number.parseInt(value) : value,
-    })
-  }
+    });
+    // Clear error for the field being edited
+    setErrors((prev) => ({ ...prev, [name]: "" }));
+  };
+
+  const validateForm = () => {
+    const newErrors = {};
+    if (!formData.full_name) newErrors.full_name = "Full Name is required";
+    if (!formData.username) newErrors.username = "Username is required";
+    if (!formData.password) newErrors.password = "Password is required";
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (!validateForm()) {
+      toast.error("Please fill all required fields", { toastId: "required-fields-error" });
+      return;
+    }
+    if (!adminBranchId) {
+      toast.error("Branch information missing. Please contact support.", {
+        toastId: "missing-branch-id",
+      });
+      return;
+    }
+    if (!onAdd) {
+      toast.error("Add employee handler is not defined", { toastId: "onAdd-undefined" });
+      console.error("AddEmployeeModal: onAdd is undefined");
+      return;
+    }
+
+    const employeeData = {
+      ...formData,
+      profilePictureFile,
+      branch_id: adminBranchId, // Set branch_id to admin's branch_id
+    };
+
+    console.log("AddEmployeeModal: Submitting employeeData:", employeeData); // Debug log
+    onAdd(employeeData);
+  };
 
   const handleClose = () => {
     setFormData({
@@ -74,11 +130,13 @@ const AddEmployeeModal = ({ onClose, onAdd }) => {
       username: "",
       password: "",
       is_active: 1,
-    })
-    setProfilePictureFile(null)
-    setPreviewImage(null)
-    onClose()
-  }
+    });
+    setProfilePictureFile(null);
+    setPreviewImage(null);
+    setBranchName("");
+    setErrors({});
+    onClose();
+  };
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-2 sm:p-4 z-50">
@@ -127,6 +185,7 @@ const AddEmployeeModal = ({ onClose, onAdd }) => {
                   className="w-full px-3 py-2 text-sm sm:text-base border border-gray-300 rounded-md focus:ring-sky-500 focus:border-sky-500"
                   required
                 />
+                {errors.full_name && <p className="text-red-600 text-sm mt-1">{errors.full_name}</p>}
               </div>
 
               <div>
@@ -172,6 +231,7 @@ const AddEmployeeModal = ({ onClose, onAdd }) => {
                   className="w-full px-3 py-2 text-sm sm:text-base border border-gray-300 rounded-md focus:ring-sky-500 focus:border-sky-500"
                   required
                 />
+                {errors.username && <p className="text-red-600 text-sm mt-1">{errors.username}</p>}
               </div>
 
               <div className="sm:col-span-2">
@@ -183,6 +243,17 @@ const AddEmployeeModal = ({ onClose, onAdd }) => {
                   onChange={handleChange}
                   className="w-full px-3 py-2 text-sm sm:text-base border border-gray-300 rounded-md focus:ring-sky-500 focus:border-sky-500"
                   required
+                />
+                {errors.password && <p className="text-red-600 text-sm mt-1">{errors.password}</p>}
+              </div>
+
+              <div className="sm:col-span-2">
+                <label className="block text-sm font-medium text-gray-700 mb-1">Branch</label>
+                <input
+                  type="text"
+                  value={branchName}
+                  disabled
+                  className="w-full px-3 py-2 text-sm sm:text-base border border-gray-300 rounded-md bg-gray-100"
                 />
               </div>
 
@@ -219,7 +290,7 @@ const AddEmployeeModal = ({ onClose, onAdd }) => {
         </form>
       </div>
     </div>
-  )
-}
+  );
+};
 
-export default AddEmployeeModal
+export default AddEmployeeModal;

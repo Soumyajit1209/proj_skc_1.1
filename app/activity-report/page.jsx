@@ -315,19 +315,24 @@ const ActivityReport = () => {
   const toggleSidebar = () => setSidebarOpen(!sidebarOpen);
 
   // Check if user is admin
-  useEffect(() => {
+ useEffect(() => {
     if (isAuthenticated && user?.role !== 'admin') {
       setError('Access denied. Admin role required.');
       toast.error('Access denied. Admin role required.', { toastId: 'auth-error' });
+      logout();
+      router.push('/login');
+    } else if (isAuthenticated && !user?.branch_id) {
+      setError('Branch information missing. Please contact support.');
+      toast.error('Branch information missing. Please contact support.', { toastId: 'missing-branch-id' });
       logout();
       router.push('/login');
     }
   }, [isAuthenticated, user, logout, router]);
 
   // Fetch activity data
-  const fetchActivities = async () => {
-    if (!isAuthenticated || user?.role !== 'admin') {
-      toast.error('Access denied. Admin role required.', { toastId: 'auth-error-fetch' });
+ const fetchActivities = async () => {
+    if (!isAuthenticated || user?.role !== 'admin' || !user?.branch_id) {
+      toast.error('Access denied or branch information missing.', { toastId: 'auth-error-fetch' });
       logout();
       router.push('/login');
       return;
@@ -339,6 +344,9 @@ const ActivityReport = () => {
         headers: {
           Authorization: `Bearer ${user.token}`,
           'Content-Type': 'application/json',
+        },
+        params: {
+          branch_id: user.branch_id, // Include branch_id in the query
         },
       });
 
@@ -361,7 +369,7 @@ const ActivityReport = () => {
   };
 
   useEffect(() => {
-    if (isAuthenticated && user?.role === 'admin') {
+    if (isAuthenticated && user?.role === 'admin' && user?.branch_id) {
       fetchActivities();
     }
   }, [isAuthenticated, user]);
@@ -398,18 +406,22 @@ const ActivityReport = () => {
 
   // Delete activity
   const handleDelete = async (activityId) => {
-    if (!isAuthenticated || user?.role !== 'admin') {
-      toast.error('Access denied. Admin role required.', { toastId: 'auth-error-delete' });
+    if (!isAuthenticated || user?.role !== 'admin' || !user?.branch_id) {
+      toast.error('Access denied or branch information missing.', { toastId: 'auth-error-delete' });
       logout();
       router.push('/login');
       return;
     }
 
     try {
+      console.log("Deleting activity ID:", activityId, "Admin branch_id:", user.branch_id); // Debug log
       const response = await axios.delete(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/admin/activity/${activityId}`, {
         headers: {
           Authorization: `Bearer ${user.token}`,
           'Content-Type': 'application/json',
+        },
+        params: {
+          branch_id: user.branch_id, // Include branch_id in the query
         },
       });
 
@@ -423,7 +435,7 @@ const ActivityReport = () => {
       // Update activityData and filteredData
       const updatedActivityData = activityData.filter(activity => activity.activity_id !== activityId);
       setActivityData(updatedActivityData);
-      setFilteredData(filteredData.filter(activity => activity.activity_id !== activityId));
+      setFilteredData(updatedActivityData); // Update filteredData to reflect deletion
       toast.success('Activity deleted successfully', { toastId: 'delete-activity-success' });
     } catch (err) {
       const errorMessage = err.response?.data?.error || err.message || 'Failed to delete activity';
@@ -443,16 +455,16 @@ const ActivityReport = () => {
   };
 
   // Download report
-  const handleDownloadReport = async () => {
-    if (!isAuthenticated || user?.role !== 'admin') {
-      toast.error('Access denied. Admin role required.', { toastId: 'auth-error-download' });
+ const handleDownloadReport = async () => {
+    if (!isAuthenticated || user?.role !== 'admin' || !user?.branch_id) {
+      toast.error('Access denied or branch information missing.', { toastId: 'auth-error-download' });
       logout();
       router.push('/login');
       return;
     }
 
     try {
-      const queryParams = new URLSearchParams();
+      const queryParams = new URLSearchParams({ branch_id: user.branch_id });
       if (filterDateRange.from) queryParams.append('from', filterDateRange.from);
       if (filterDateRange.to) queryParams.append('to', filterDateRange.to);
 
@@ -504,7 +516,7 @@ const ActivityReport = () => {
     };
   };
 
-  if (!isAuthenticated || user?.role !== 'admin') {
+ if (!isAuthenticated || user?.role !== 'admin' || !user?.branch_id){
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
         <div className="bg-white rounded-lg shadow-lg p-6 max-w-md w-full text-center">

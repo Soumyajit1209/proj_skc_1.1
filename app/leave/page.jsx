@@ -29,13 +29,25 @@ const LeaveReport = () => {
   const [filterDateRange, setFilterDateRange] = useState({ from: '', to: '' });
   const [showFilters, setShowFilters] = useState(false);
 
+  const API_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://192.168.0.111:3001';
+
   const toggleSidebar = () => setSidebarOpen(!sidebarOpen);
 
-  // Check if user is admin
+  // Debug user object
+  useEffect(() => {
+    console.log("LeaveReport: User object:", user);
+  }, [user]);
+
+  // Check if user is admin and has branch_id
   useEffect(() => {
     if (isAuthenticated && user?.role !== 'admin') {
       setError('Access denied. Admin role required.');
       toast.error('Access denied. Admin role required.', { toastId: 'auth-error' });
+      logout();
+      router.push('/login');
+    } else if (isAuthenticated && !user?.branch_id) {
+      setError('Branch information missing. Please contact support.');
+      toast.error('Branch information missing. Please contact support.', { toastId: 'missing-branch-id' });
       logout();
       router.push('/login');
     }
@@ -43,8 +55,8 @@ const LeaveReport = () => {
 
   // Fetch leave data
   const fetchLeaves = async () => {
-    if (!isAuthenticated || user?.role !== 'admin') {
-      toast.error('Access denied. Admin role required.', { toastId: 'auth-error-fetch' });
+    if (!isAuthenticated || user?.role !== 'admin' || !user?.branch_id) {
+      toast.error('Access denied or branch information missing.', { toastId: 'auth-error-fetch' });
       logout();
       router.push('/login');
       return;
@@ -52,11 +64,12 @@ const LeaveReport = () => {
 
     try {
       setLoading(true);
-      const response = await axios.get(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/admin/leaves`, {
+      const response = await axios.get(`${API_BASE_URL}/api/admin/leaves`, {
         headers: {
           Authorization: `Bearer ${user.token}`,
           'Content-Type': 'application/json',
         },
+        params: { branch_id: user.branch_id }
       });
 
       if (response.status === 401) {
@@ -78,7 +91,7 @@ const LeaveReport = () => {
   };
 
   useEffect(() => {
-    if (isAuthenticated && user?.role === 'admin') {
+    if (isAuthenticated && user?.role === 'admin' && user?.branch_id) {
       fetchLeaves();
     }
   }, [isAuthenticated, user]);
@@ -86,6 +99,7 @@ const LeaveReport = () => {
   // Filter leaves
   useEffect(() => {
     const filtered = leaveData.filter(leave => {
+      if (!leave || !leave.leave_id) return false; // Ensure leave_id exists
       if (filterStatus !== 'ALL' && leave.status !== filterStatus) return false;
       if (filterDateRange.from && leave.application_datetime < filterDateRange.from) return false;
       if (filterDateRange.to && leave.application_datetime > filterDateRange.to) return false;
@@ -95,19 +109,25 @@ const LeaveReport = () => {
   }, [leaveData, filterStatus, filterDateRange]);
 
   const handleDelete = async (leaveId) => {
-    if (!isAuthenticated || user?.role !== 'admin') {
-      toast.error('Access denied. Admin role required.', { toastId: 'auth-error-delete' });
+    if (!isAuthenticated || user?.role !== 'admin' || !user?.branch_id) {
+      toast.error('Access denied or branch information missing.', { toastId: 'auth-error-delete' });
       logout();
       router.push('/login');
       return;
     }
 
+    if (!leaveId) {
+      toast.error('Invalid leave ID.', { toastId: 'invalid-leave-id' });
+      return;
+    }
+
     try {
-      const response = await axios.delete(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/admin/leaves/${leaveId}`, {
+      const response = await axios.delete(`${API_BASE_URL}/api/admin/leaves/${leaveId}`, {
         headers: {
           Authorization: `Bearer ${user.token}`,
           'Content-Type': 'application/json',
         },
+        data: { branch_id: user.branch_id }
       });
 
       if (response.status === 401) {
@@ -121,6 +141,7 @@ const LeaveReport = () => {
       setLeaveData(leaveData.filter(leave => leave.leave_id !== leaveId));
       setFilteredData(filteredData.filter(leave => leave.leave_id !== leaveId));
       toast.success('Leave application deleted successfully', { toastId: 'delete-leave-success' });
+      setShowDetailModal(false);
     } catch (err) {
       const errorMessage = err.response?.data?.error || err.message || 'Failed to delete leave application';
       toast.error(errorMessage, { toastId: 'delete-leave-error' });
@@ -128,17 +149,22 @@ const LeaveReport = () => {
   };
 
   const handleStatusChange = async (leaveId, newStatus) => {
-    if (!isAuthenticated || user?.role !== 'admin') {
-      toast.error('Access denied. Admin role required.', { toastId: 'auth-error-update' });
+    if (!isAuthenticated || user?.role !== 'admin' || !user?.branch_id) {
+      toast.error('Access denied or branch information missing.', { toastId: 'auth-error-update' });
       logout();
       router.push('/login');
       return;
     }
 
+    if (!leaveId) {
+      toast.error('Invalid leave ID.', { toastId: 'invalid-leave-id-update' });
+      return;
+    }
+
     try {
       const response = await axios.put(
-        `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/admin/leaves/${leaveId}`,
-        { status: newStatus },
+        `${API_BASE_URL}/api/admin/leaves/${leaveId}`,
+        { status: newStatus, branch_id: user.branch_id },
         {
           headers: {
             Authorization: `Bearer ${user.token}`,
@@ -159,9 +185,20 @@ const LeaveReport = () => {
           ? {
               ...leave,
               status: newStatus,
-              approved_by: 1,
+              approved_by: user.id || 1,
               approved_on: new Date().toISOString().slice(0, 19).replace('T', ' '),
-              approved_by_username: 'adminuser'
+              approved_by_username: user.username || 'adminuser'
+            }
+          : leave
+      ));
+      setFilteredData(filteredData.map(leave =>
+        leave.leave_id === leaveId
+          ? {
+              ...leave,
+              status: newStatus,
+              approved_by: user.id || 1,
+              approved_on: new Date().toISOString().slice(0, 19).replace('T', ' '),
+              approved_by_username: user.username || 'adminuser'
             }
           : leave
       ));
@@ -174,19 +211,25 @@ const LeaveReport = () => {
   };
 
   const handleViewDetails = async (leave) => {
-    if (!isAuthenticated || user?.role !== 'admin') {
-      toast.error('Access denied. Admin role required.', { toastId: 'auth-error-view' });
+    if (!isAuthenticated || user?.role !== 'admin' || !user?.branch_id) {
+      toast.error('Access denied or branch information missing.', { toastId: 'auth-error-view' });
       logout();
       router.push('/login');
       return;
     }
 
+    if (!leave?.leave_id) {
+      toast.error('Invalid leave ID.', { toastId: 'invalid-leave-id-view' });
+      return;
+    }
+
     try {
-      const response = await axios.get(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/admin/leaves/employee/${leave.emp_id}`, {
+      const response = await axios.get(`${API_BASE_URL}/api/admin/leaves/employee/${leave.emp_id}`, {
         headers: {
           Authorization: `Bearer ${user.token}`,
           'Content-Type': 'application/json',
         },
+        params: { branch_id: user.branch_id }
       });
 
       if (response.status === 401) {
@@ -207,102 +250,94 @@ const LeaveReport = () => {
     }
   };
 
-const handleDownloadReport = async () => {
-  if (!isAuthenticated || user?.role !== 'admin') {
-    toast.error('Access denied. Admin role required.', { toastId: 'auth-error-download' });
-    logout();
-    router.push('/login');
-    return;
-  }
-
-  try {
-    // Build query parameters based on current filters
-    const queryParams = new URLSearchParams();
-    
-    // Add status filter if not 'ALL'
-    if (filterStatus && filterStatus !== 'ALL') {
-      queryParams.append('status', filterStatus);
-    }
-    
-    // Add date range filters if provided
-    if (filterDateRange.from) {
-      queryParams.append('fromDate', filterDateRange.from);
-    }
-    
-    if (filterDateRange.to) {
-      queryParams.append('toDate', filterDateRange.to);
-    }
-
-    // Construct the URL with query parameters
-    const url = `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/admin/leaves/download${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
-
-    const response = await axios.get(url, {
-      headers: {
-        Authorization: `Bearer ${user.token}`,
-        'Content-Type': 'application/json',
-      },
-      responseType: 'blob',
-    });
-
-    if (response.status === 401) {
-      toast.error('Session expired. Please login again.', { toastId: 'session-expired-download' });
+  const handleDownloadReport = async () => {
+    if (!isAuthenticated || user?.role !== 'admin' || !user?.branch_id) {
+      toast.error('Access denied or branch information missing.', { toastId: 'auth-error-download' });
       logout();
       router.push('/login');
       return;
     }
 
-    const contentType = response.headers['content-type'];
-    if (!contentType.includes('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet') &&
-        !contentType.includes('application/vnd.ms-excel')) {
-      const text = await response.data.text();
-      try {
-        const errorData = JSON.parse(text);
-        throw new Error(errorData.error || 'Invalid response format from server');
-      } catch {
-        throw new Error('Server returned an invalid Excel file');
+    try {
+      // Build query parameters based on current filters
+      const queryParams = new URLSearchParams();
+      if (filterStatus && filterStatus !== 'ALL') {
+        queryParams.append('status', filterStatus);
       }
-    }
-
-    // Generate filename with filter information
-    let filename = 'leave_report';
-    
-    if (filterStatus && filterStatus !== 'ALL') {
-      filename += `_${filterStatus.toLowerCase()}`;
-    }
-    
-    if (filterDateRange.from || filterDateRange.to) {
-      filename += '_filtered';
       if (filterDateRange.from) {
-        filename += `_from_${filterDateRange.from}`;
+        queryParams.append('fromDate', filterDateRange.from);
       }
       if (filterDateRange.to) {
-        filename += `_to_${filterDateRange.to}`;
+        queryParams.append('toDate', filterDateRange.to);
       }
-    }
-    
-    filename += '.xlsx';
+      queryParams.append('branch_id', user.branch_id);
 
-    const url_blob = window.URL.createObjectURL(new Blob([response.data]));
-    const link = document.createElement('a');
-    link.href = url_blob;
-    link.setAttribute('download', filename);
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    window.URL.revokeObjectURL(url_blob);
-    
-    // Show success message with filter information
-    let successMessage = 'Excel report downloaded successfully';
-    if (filterStatus !== 'ALL' || filterDateRange.from || filterDateRange.to) {
-      successMessage += ' (filtered data)';
+      // Construct the URL with query parameters
+      const url = `${API_BASE_URL}/api/admin/leaves/download${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
+
+      const response = await axios.get(url, {
+        headers: {
+          Authorization: `Bearer ${user.token}`,
+          'Content-Type': 'application/json',
+        },
+        responseType: 'blob',
+      });
+
+      if (response.status === 401) {
+        toast.error('Session expired. Please login again.', { toastId: 'session-expired-download' });
+        logout();
+        router.push('/login');
+        return;
+      }
+
+      const contentType = response.headers['content-type'];
+      if (!contentType.includes('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet') &&
+          !contentType.includes('application/vnd.ms-excel')) {
+        const text = await response.data.text();
+        try {
+          const errorData = JSON.parse(text);
+          throw new Error(errorData.error || 'Invalid response format from server');
+        } catch {
+          throw new Error('Server returned an invalid Excel file');
+        }
+      }
+
+      // Generate filename with filter information
+      let filename = `leave_report_branch_${user.branch_id}`;
+      if (filterStatus && filterStatus !== 'ALL') {
+        filename += `_${filterStatus.toLowerCase()}`;
+      }
+      if (filterDateRange.from || filterDateRange.to) {
+        filename += '_filtered';
+        if (filterDateRange.from) {
+          filename += `_from_${filterDateRange.from}`;
+        }
+        if (filterDateRange.to) {
+          filename += `_to_${filterDateRange.to}`;
+        }
+      }
+      filename += '.xlsx';
+
+      const url_blob = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url_blob;
+      link.setAttribute('download', filename);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url_blob);
+
+      // Show success message with filter information
+      let successMessage = 'Excel report downloaded successfully';
+      if (filterStatus !== 'ALL' || filterDateRange.from || filterDateRange.to) {
+        successMessage += ' (filtered data)';
+      }
+      toast.success(successMessage, { toastId: 'download-report-success' });
+    } catch (err) {
+      const errorMessage = err.message || 'Failed to download report';
+      toast.error(errorMessage, { toastId: 'download-report-error' });
     }
-    
-    toast.success(successMessage, { toastId: 'download-report-success' });
-  } catch (err) {
-    const errorMessage = err.message || 'Failed to download report';
-    toast.error(errorMessage, { toastId: 'download-report-error' });
-  }
-};
+  };
 
   const getSummaryStats = () => {
     if (!filteredData || !Array.isArray(filteredData)) {
@@ -316,7 +351,7 @@ const handleDownloadReport = async () => {
     };
   };
 
-  if (!isAuthenticated || user?.role !== 'admin') {
+  if (!isAuthenticated || user?.role !== 'admin' || !user?.branch_id) {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
         <div className="bg-white rounded-lg shadow-lg p-6 max-w-md w-full text-center">
@@ -324,7 +359,7 @@ const handleDownloadReport = async () => {
             <X className="w-6 h-6 text-red-600" />
           </div>
           <h2 className="text-xl font-semibold text-gray-800 mb-2">Access Denied</h2>
-          <p className="text-gray-600">Admin role required to access this page.</p>
+          <p className="text-gray-600">Admin role and valid branch information required to access this page.</p>
         </div>
       </div>
     );
@@ -351,7 +386,7 @@ const handleDownloadReport = async () => {
             <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-4 sm:mb-6">
               <div>
                 <h1 className="text-xl sm:text-2xl font-semibold text-gray-900">Leave Management</h1>
-                <p className="text-sm sm:text-base text-gray-600 mt-1">Manage and track employee leave applications</p>
+                <p className="text-sm sm:text-base text-gray-600 mt-1">Manage and track employee leave applications for Branch ID: {user.branch_id}</p>
               </div>
               <div className="flex flex-wrap gap-2">
                 <button
@@ -397,7 +432,7 @@ const handleDownloadReport = async () => {
               setShowDetailModal={setShowDetailModal}
               selectedLeave={selectedLeave}
               handleStatusChange={handleStatusChange}
-              handleDelete = {handleDelete}
+              handleDelete={handleDelete}
             />
 
             <ToastContainer
