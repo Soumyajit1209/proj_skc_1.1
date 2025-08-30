@@ -901,19 +901,6 @@ const AttendanceReport = () => {
                   totalRecords={pendingAttendanceData.length}
                   filteredRecords={filteredPendingData.length}
                 />
-                
-                <div className="mb-4 bg-orange-50 border border-orange-200 rounded-lg p-4">
-                  <div className="flex items-start gap-3">
-                    <AlertTriangle className="text-orange-500 mt-0.5" size={20} />
-                    <div>
-                      <h4 className="font-medium text-orange-800">Pending Out-Time Management</h4>
-                      <p className="text-sm text-orange-700 mt-1">
-                        These employees have checked in but haven't marked their out-time for yesterday. 
-                        You can close their attendance, which will automatically set remarks to "ADMIN_VERIFIED".
-                      </p>
-                    </div>
-                  </div>
-                </div>
 
                 <PendingAttendanceTable
                   data={filteredPendingData}
