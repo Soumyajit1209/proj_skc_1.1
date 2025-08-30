@@ -5,8 +5,6 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useRouter } from 'next/navigation';
 import { ToastContainer, toast } from 'react-toastify';
 import { Calendar, Download, User, Printer, Clock, Filter, Search, XCircle, CheckCircle, AlertTriangle } from 'lucide-react';
-import Header from '@/components/Header';
-import Sidebar from '@/components/Sidebar';
 import ErrorAlert from '@/components/ui/ErrorAlert';
 import SummaryCard from '@/components/SummaryCard';
 import AttendanceTable from '@/components/AttendanceTable';
@@ -16,7 +14,7 @@ import DateRangeModal from '@/components/DateRangeModal';
 import { X } from 'lucide-react';
 
 // Enhanced Pending Attendance Table Component
-const PendingAttendanceTable = ({ data, onView, onClose, getStatusColor, calculateWorkingHours }) => {
+const PendingAttendanceTable = ({ data, onView, onDirectClose, getStatusColor, calculateWorkingHours }) => {
   return (
     <div className="bg-white rounded-lg shadow overflow-hidden">
       <div className="overflow-x-auto">
@@ -36,8 +34,8 @@ const PendingAttendanceTable = ({ data, onView, onClose, getStatusColor, calcula
                 <td colSpan={7} className="px-6 py-8 text-center text-gray-500">
                   <div className="flex flex-col items-center">
                     <CheckCircle size={48} className="text-green-500 mb-2" />
-                    <p className="text-lg font-medium">No pending out-times found</p>
-                    <p className="text-sm">All employees have completed their attendance for yesterday</p>
+                    <p className="text-lg font-medium">No pending verifications found</p>
+                    <p className="text-sm">All employees have completed their attendance properly</p>
                   </div>
                 </td> 
               </tr>
@@ -69,9 +67,10 @@ const PendingAttendanceTable = ({ data, onView, onClose, getStatusColor, calcula
                         View
                       </button>
                       <button
-                        onClick={() => onClose(record)}
-                        className="bg-orange-500 hover:bg-orange-600 text-white px-3 py-1 rounded text-xs font-medium transition-colors"
+                        onClick={() => onDirectClose(record)}
+                        className="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded text-xs font-medium transition-colors flex items-center gap-1"
                       >
+                        <CheckCircle size={12} />
                         Close
                       </button>
                     </div>
@@ -345,94 +344,6 @@ const EmployeeAttendanceReportModal = ({ data, onClose, onBackdropClick, calcula
   );
 };
 
-const CloseAttendanceModal = ({ record, remarks, setRemarks, onClose, onBackdropClick, onCloseAttendance }) => {
-  return (
-    <div
-      className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50"
-      onClick={onBackdropClick}
-    >
-      <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-md">
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-xl font-semibold text-gray-800 flex items-center gap-2">
-            <AlertTriangle className="text-orange-500" size={20} />
-            Close Attendance
-          </h2>
-          <button onClick={onClose} className="text-gray-600 hover:text-gray-800">
-            <X size={24} />
-          </button>
-        </div>
-        
-        <div className="mb-4 p-4 bg-orange-50 rounded-lg border border-orange-200">
-          <div className="flex items-start gap-3">
-            <AlertTriangle className="text-orange-500 mt-0.5" size={16} />
-            <div>
-              <h4 className="font-medium text-orange-800">Missing Out-Time Detected</h4>
-              <p className="text-sm text-orange-700 mt-1">
-                This employee has not marked their out-time for the day. Closing this attendance will mark it as complete without an out-time record.
-              </p>
-            </div>
-          </div>
-        </div>
-        
-        <div className="mb-4 bg-gray-50 p-4 rounded-lg">
-          <div className="grid grid-cols-2 gap-4 text-sm">
-            <div>
-              <span className="font-medium text-gray-700">Employee:</span>
-              <p className="text-gray-600">{record.full_name}</p>
-            </div>
-            <div>
-              <span className="font-medium text-gray-700">Employee ID:</span>
-              <p className="text-gray-600">{record.emp_id}</p>
-            </div>
-            <div>
-              <span className="font-medium text-gray-700">Date:</span>
-              <p className="text-gray-600">{record.attendance_date}</p>
-            </div>
-            <div>
-              <span className="font-medium text-gray-700">Check In:</span>
-              <p className="text-gray-600">{record.in_time || 'Not recorded'}</p>
-            </div>
-          </div>
-        </div>
-        
-        <div className="mb-6">
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Remarks <span className="text-red-500">*</span>
-          </label>
-          <textarea
-            value={remarks}
-            onChange={(e) => setRemarks(e.target.value)}
-            className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
-            rows={4}
-            placeholder="Please provide a reason for closing this attendance (e.g., Employee forgot to mark out-time, Emergency leave, etc.)"
-            required
-          />
-          <p className="text-xs text-gray-500 mt-1">
-            This remark will be recorded in the attendance system for future reference.
-          </p>
-        </div>
-        
-        <div className="flex justify-end gap-3">
-          <button
-            onClick={onClose}
-            className="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-colors"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={onCloseAttendance}
-            disabled={!remarks.trim()}
-            className="px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
-          >
-            <XCircle size={16} />
-            Close Attendance
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-};
-
 const AttendanceReport = () => {
   const { user, logout, isAuthenticated } = useAuth();
   const router = useRouter();
@@ -444,12 +355,10 @@ const AttendanceReport = () => {
   const [error, setError] = useState(null);
   const [viewModal, setViewModal] = useState(false);
   const [rejectModal, setRejectModal] = useState(false);
-  const [closeModalOpen, setCloseModalOpen] = useState(false);
   const [employeeModal, setEmployeeModal] = useState(false);
   const [reportModal, setReportModal] = useState(false);
   const [selectedRecord, setSelectedRecord] = useState(null);
   const [rejectRemarks, setRejectRemarks] = useState('');
-  const [closeRemarks, setCloseRemarks] = useState('');
   const [dateRange, setDateRange] = useState({ from: '', to: '' });
   const [showDateRangeModal, setShowDateRangeModal] = useState(false);
   const [employeeReport, setEmployeeReport] = useState(null);
@@ -544,7 +453,7 @@ const AttendanceReport = () => {
     }
   };
 
- const fetchEmployees = async () => {
+  const fetchEmployees = async () => {
     if (!isAuthenticated || user?.role !== 'admin' || !user?.branch_id) {
       toast.error('Access denied or branch information missing.', { toastId: 'auth-error-employees' });
       logout();
@@ -569,7 +478,7 @@ const AttendanceReport = () => {
     }
   };
 
- const fetchEmployeeAttendanceReport = async (emp_id, dateRange) => {
+  const fetchEmployeeAttendanceReport = async (emp_id, dateRange) => {
     if (!isAuthenticated || user?.role !== 'admin' || !user?.branch_id) {
       toast.error('Access denied or branch information missing.', { toastId: 'auth-error-report' });
       logout();
@@ -647,23 +556,18 @@ const AttendanceReport = () => {
     }
   };
 
-  const handleCloseAttendance = async () => {
+  const handleCloseAttendance = async (record) => {
     if (!isAuthenticated || user?.role !== 'admin' || !user?.branch_id) {
       toast.error('Access denied or branch information missing.', { toastId: 'auth-error-close' });
       logout();
       router.push('/login');
       return;
     }
-    
-    if (!closeRemarks.trim()) {
-      toast.error('Please enter remarks for closing attendance', { toastId: 'close-remarks-required' });
-      return;
-    }
 
     try {
       const response = await axios.put(
-        `${API_BASE_URL}/api/admin/attendance/${selectedRecord.attendance_id}/close`,
-        { remarks: closeRemarks, branch_id: user.branch_id },
+        `${API_BASE_URL}/api/admin/attendance/${record.attendance_id}/close`,
+        { remarks: 'ADMIN_VERIFIED', branch_id: user.branch_id },
         { headers: { Authorization: `Bearer ${user.token}`, 'Content-Type': 'application/json' } }
       );
       
@@ -676,11 +580,10 @@ const AttendanceReport = () => {
 
       // Remove the closed attendance from pending list
       setPendingAttendanceData((prev) =>
-        prev.filter((record) => record.attendance_id !== selectedRecord.attendance_id)
+        prev.filter((item) => item.attendance_id !== record.attendance_id)
       );
       
       toast.success('Attendance closed successfully', { toastId: 'close-success' });
-      closeModal();
     } catch (error) {
       const errorMessage = error.response?.data?.error || error.message || 'Failed to close attendance';
       toast.error(errorMessage, { toastId: 'close-attendance-error' });
@@ -742,7 +645,8 @@ const AttendanceReport = () => {
       }
     }
   };
- const handleDownloadByRange = async () => {
+
+  const handleDownloadByRange = async () => {
     if (!isAuthenticated || user?.role !== 'admin' || !user?.branch_id) {
       toast.error('Access denied or branch information missing.', { toastId: 'auth-error-download-range' });
       logout();
@@ -797,7 +701,6 @@ const AttendanceReport = () => {
       }
     }
   };
-  
 
   const getStatusColor = (status) => {
     switch (status) {
@@ -825,13 +728,11 @@ const AttendanceReport = () => {
   const closeModal = () => {
     setViewModal(false);
     setRejectModal(false);
-    setCloseModalOpen(false);
     setShowDateRangeModal(false);
     setEmployeeModal(false);
     setReportModal(false);
     setSelectedRecord(null);
     setRejectRemarks('');
-    setCloseRemarks('');
     setEmployeeReport(null);
   };
 
@@ -843,10 +744,9 @@ const AttendanceReport = () => {
     setEmployeeModal(true);
   };
 
-  const handleClose = (record) => {
+  const handleDirectClose = (record) => {
     setSelectedRecord(record);
-    setCloseRemarks('');
-    setCloseModalOpen(true);
+    handleCloseAttendance(record);
   };
 
   // Enhanced filtering logic for pending attendance
@@ -905,9 +805,7 @@ const AttendanceReport = () => {
 
   return (
     <div className="min-h-screen bg-gray-100 flex flex-col lg:flex-row">
-      {/* <Sidebar isOpen={sidebarOpen} toggleSidebar={toggleSidebar} /> */}
-      <div className={`flex-1 flex flex-col min-h-screen ${viewModal || rejectModal || showDateRangeModal || employeeModal || reportModal || closeModalOpen ? 'blur-sm' : ''}`}>
-        {/* <Header toggleSidebar={toggleSidebar} /> */}
+      <div className={`flex-1 flex flex-col min-h-screen ${viewModal || rejectModal || showDateRangeModal || employeeModal || reportModal ? 'blur-sm' : ''}`}>
         <main className="flex-1 p-4">
           <div className="max-w-7xl mx-auto">
             <div className="flex flex-col sm:flex-row justify-between items-center gap-4 mb-4">
@@ -1011,7 +909,7 @@ const AttendanceReport = () => {
                       <h4 className="font-medium text-orange-800">Pending Out-Time Management</h4>
                       <p className="text-sm text-orange-700 mt-1">
                         These employees have checked in but haven't marked their out-time for yesterday. 
-                        You can close their attendance manually with appropriate remarks.
+                        You can close their attendance, which will automatically set remarks to "ADMIN_VERIFIED".
                       </p>
                     </div>
                   </div>
@@ -1020,7 +918,7 @@ const AttendanceReport = () => {
                 <PendingAttendanceTable
                   data={filteredPendingData}
                   onView={(record) => { setSelectedRecord(record); setViewModal(true); }}
-                  onClose={handleClose}
+                  onDirectClose={handleDirectClose}
                   getStatusColor={getStatusColor}
                   calculateWorkingHours={calculateWorkingHours}
                 />
@@ -1046,17 +944,6 @@ const AttendanceReport = () => {
           remarks={rejectRemarks}
           setRemarks={setRejectRemarks}
           onReject={handleRejectAttendance}
-          onClose={closeModal}
-          onBackdropClick={handleModalBackdropClick}
-        />
-      )}
-
-      {closeModalOpen && selectedRecord && (
-        <CloseAttendanceModal
-          record={selectedRecord}
-          remarks={closeRemarks}
-          setRemarks={setCloseRemarks}
-          onCloseAttendance={handleCloseAttendance}
           onClose={closeModal}
           onBackdropClick={handleModalBackdropClick}
         />
